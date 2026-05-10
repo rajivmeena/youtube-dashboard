@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Insight BI — YouTube Performance Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080B18;--card:#101425;--card2:#161B30;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --t:#00D4A3;--o:#FF8C42;--p:#8B7FFA;--b:#38BDF8;--pk:#F472B6;--g:#86EFAC;
+  --text:#DDE4F5;--muted:#5E6A88;--dim:#1E2440;
+}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:rgba(8,11,24,0.96);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+.hdr-brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:34px;height:34px;background:var(--t);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-mark svg{width:18px;height:18px;fill:#080B18}
+.brand-name{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;letter-spacing:0.5px;color:var(--text)}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.live-dot{width:7px;height:7px;background:var(--t);border-radius:50%;margin-right:4px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.hdr-stat{font-size:11px;color:var(--muted)}
+.hdr-stat span{color:var(--text);font-weight:600;margin-left:4px}
+
+/* MAIN */
+.main{padding:20px 28px 32px;max-width:1500px;margin:0 auto}
+
+/* FILTERS */
+.filter-bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:10px}
+.fl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:600}
+.tg{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:2px}
+.tb{padding:4px 12px;border:none;background:transparent;color:var(--muted);border-radius:5px;cursor:pointer;font-size:12px;font-family:'Barlow',sans-serif;font-weight:500;transition:all .15s}
+.tb.on{background:var(--t);color:#080B18}
+.fsel{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-family:'Barlow',sans-serif;font-size:12px;cursor:pointer;outline:none;min-width:130px}
+.fsel:focus{border-color:var(--t)}
+.filter-reset{padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);font-family:'Barlow',sans-serif;font-size:12px;cursor:pointer;margin-left:auto}
+.filter-reset:hover{border-color:var(--border2);color:var(--text)}
+.result-count{font-size:11px;color:var(--muted)}
+.result-count span{color:var(--t);font-weight:600}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+.kc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s}
+.kc:hover{border-color:var(--border2)}
+.kc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kc.a0::after{background:var(--t)}.kc.a1::after{background:var(--o)}.kc.a2::after{background:var(--p)}
+.kc.a3::after{background:var(--b)}.kc.a4::after{background:var(--pk)}.kc.a5::after{background:var(--g)}
+.kl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;font-weight:600;margin-bottom:6px}
+.kv{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;line-height:1;margin-bottom:3px}
+.kv.a0{color:var(--t)}.kv.a1{color:var(--o)}.kv.a2{color:var(--p)}.kv.a3{color:var(--b)}.kv.a4{color:var(--pk)}.kv.a5{color:var(--g)}
+.ks{font-size:10px;color:var(--muted)}
+
+/* GRID ROWS */
+.row{display:grid;gap:14px;margin-bottom:14px}
+.r-2{grid-template-columns:2fr 1fr}
+.r-2b{grid-template-columns:1fr 1.6fr}
+.r-3{grid-template-columns:1fr 1fr 1fr}
+.r-full{grid-template-columns:1fr}
+
+/* CARDS */
+.cc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.ct{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.cd{font-size:11px;color:var(--muted);margin-bottom:14px}
+
+/* LEGEND */
+.leg{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.ld{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* FUNNEL */
+.fn-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.fn-lbl{width:90px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0}
+.fn-wrap{flex:1;height:30px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden}
+.fn-bar{height:100%;border-radius:6px;display:flex;align-items:center;padding:0 10px;min-width:60px;transition:width .6s ease}
+.fn-val{font-size:11px;font-weight:600;color:#080B18;white-space:nowrap}
+.fn-pct{width:48px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0}
+.fn-arrow{font-size:14px;color:var(--muted);margin:0 4px;text-align:center;display:flex;justify-content:flex-end;padding-right:8px;margin-bottom:2px}
+
+/* COMPARE */
+.cmp-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cmp-side{padding:12px;background:var(--card2);border-radius:8px;border:1px solid var(--border)}
+.cmp-head{font-size:12px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.cmp-m{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.cmp-ml{font-size:11px;color:var(--muted)}
+.cmp-mv{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700}
+.sh-clr{color:var(--t)}.lo-clr{color:var(--p)}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+.dtbl{width:100%;border-collapse:collapse;font-size:12px}
+.dtbl th{text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+.dtbl th.r{text-align:right}
+.dtbl td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.03);color:var(--text);vertical-align:middle}
+.dtbl td.r{text-align:right}
+.dtbl tr:last-child td{border-bottom:none}
+.dtbl tr:hover td{background:rgba(255,255,255,0.02)}
+.bsh{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:0.3px}
+.bsh-s{background:rgba(0,212,163,0.12);color:var(--t)}
+.bsh-l{background:rgba(139,127,250,0.12);color:var(--p)}
+.num-bar{display:inline-block;height:3px;border-radius:2px;vertical-align:middle;margin-left:6px;opacity:0.6}
+.rank-n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:var(--dim);font-size:11px;font-weight:600;color:var(--muted)}
+.rank-n.top{background:rgba(0,212,163,0.15);color:var(--t)}
+
+/* FOOTER */
+.ftr{margin-top:24px;padding:14px 28px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+.section-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.section-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+@media(max-width:1200px){
+  .kpi-row{grid-template-columns:repeat(3,1fr)}
+  .r-2,.r-2b,.r-3{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 18 18"><path d="M2 14 L6 8 L10 11 L14 4 L16 6"/><circle cx="16" cy="4" r="1.5"/></svg>
+    </div>
+    <div>
+      <div class="brand-name">Insight BI</div>
+      <div class="brand-sub">YouTube Content Performance Dashboard</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="live-dot"></div>
+    <div class="hdr-stat">Videos:<span id="h-total">—</span></div>
+    <div class="hdr-stat" style="margin-left:12px">Dataset:<span style="color:var(--muted)"> May 2025 – Apr 2026</span></div>
+  </div>
+</header>
+
+<main class="main">
+
+<div class="filter-bar">
+  <span class="fl">Type</span>
+  <div class="tg">
+    <button class="tb on" onclick="setType('All')">All</button>
+    <button class="tb" onclick="setType('Short')">Shorts</button>
+    <button class="tb" onclick="setType('Long')">Long</button>
+  </div>
+  <span class="fl" style="margin-left:8px">Topic</span>
+  <select class="fsel" id="topic-sel" onchange="setTopic(this.value)">
+    <option value="All">All Topics</option>
+    <option>DAX</option>
+    <option>SQL</option>
+    <option>Power Query</option>
+    <option>Dashboard Design</option>
+    <option>Interview Prep</option>
+    <option>Performance Optimization</option>
+    <option>Tips</option>
+  </select>
+  <button class="filter-reset" onclick="resetFilters()">↺ Reset</button>
+  <span class="result-count"><span id="fc">300</span> videos</span>
+</div>
+
+<div class="kpi-row">
+  <div class="kc a0"><div class="kl">Total Views</div><div class="kv a0" id="k-views">—</div><div class="ks" id="ks-views">across all videos</div></div>
+  <div class="kc a1"><div class="kl">Watch Time</div><div class="kv a1" id="k-wt">—</div><div class="ks" id="ks-wt">hours watched</div></div>
+  <div class="kc a2"><div class="kl">Net Subscribers</div><div class="kv a2" id="k-ns">—</div><div class="ks" id="ks-ns">gained – lost</div></div>
+  <div class="kc a3"><div class="kl">Avg CTR</div><div class="kv a3" id="k-ctr">—</div><div class="ks">click-through rate</div></div>
+  <div class="kc a4"><div class="kl">Avg Retention</div><div class="kv a4" id="k-ret">—</div><div class="ks">avg view / duration</div></div>
+  <div class="kc a5"><div class="kl">Sub Conv. Rate</div><div class="kv a5" id="k-scr">—</div><div class="ks">subs gained / views</div></div>
+</div>
+
+<div class="section-lbl">Performance Over Time</div>
+<div class="row r-full" style="margin-bottom:14px">
+  <div class="cc">
+    <div class="ct">Monthly Views Trend</div>
+    <div class="cd">Total views per month — Shorts vs Long formats</div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--t)"></div>Shorts</div>
+      <div class="li"><div class="ld" style="background:var(--p);border:none;background-image:repeating-linear-gradient(45deg,var(--p) 0 2px,transparent 2px 4px)"></div>Long</div>
+    </div>
+    <div style="position:relative;height:200px"><canvas id="trendChart" role="img" aria-label="Monthly views trend for Shorts and Long videos"></canvas></div>
+  </div>
+</div>
+
+<div class="section-lbl">Content Format Analysis</div>
+<div class="row r-2b" style="margin-bottom:14px">
+  <div class="cc">
+    <div class="ct">Shorts vs Long — Key Metrics</div>
+    <div class="cd">Side-by-side performance comparison by format</div>
+    <div class="cmp-row" id="cmp-stats">
+      <div class="cmp-side">
+        <div class="cmp-head sh-clr">⚡ Shorts</div>
+        <div class="cmp-m"><span class="cmp-ml">Avg Views</span><span class="cmp-mv sh-clr" id="s-vw">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Avg CTR</span><span class="cmp-mv sh-clr" id="s-ctr">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Avg Retention</span><span class="cmp-mv sh-clr" id="s-ret">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Sub Conv. Rate</span><span class="cmp-mv sh-clr" id="s-scr">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Avg Net Subs</span><span class="cmp-mv sh-clr" id="s-ns">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Engagement Rate</span><span class="cmp-mv sh-clr" id="s-eng">—</span></div>
+      </div>
+      <div class="cmp-side">
+        <div class="cmp-head lo-clr">🎬 Long</div>
+        <div class="cmp-m"><span class="cmp-ml">Avg Views</span><span class="cmp-mv lo-clr" id="l-vw">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Avg CTR</span><span class="cmp-mv lo-clr" id="l-ctr">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Avg Retention</span><span class="cmp-mv lo-clr" id="l-ret">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Sub Conv. Rate</span><span class="cmp-mv lo-clr" id="l-scr">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Avg Net Subs</span><span class="cmp-mv lo-clr" id="l-ns">—</span></div>
+        <div class="cmp-m"><span class="cmp-ml">Engagement Rate</span><span class="cmp-mv lo-clr" id="l-eng">—</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="cc">
+    <div class="ct">Topic Performance — Net Subscribers</div>
+    <div class="cd">Total net subscriber gain ranked by topic</div>
+    <div id="topicChartWrap" style="position:relative"><canvas id="topicChart" role="img" aria-label="Horizontal bar chart of net subscribers by topic"></canvas></div>
+  </div>
+</div>
+
+<div class="section-lbl">Funnel & Bottleneck Analysis</div>
+<div class="row r-2" style="margin-bottom:14px">
+  <div class="cc">
+    <div class="ct">CTR vs Retention — Bottleneck Finder</div>
+    <div class="cd">Each point is a video — identify if CTR or Retention limits growth</div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--t)"></div>Short</div>
+      <div class="li"><div class="ld" style="background:var(--p)"></div>Long</div>
+    </div>
+    <div style="position:relative;height:260px"><canvas id="scatterChart" role="img" aria-label="Scatter plot of CTR vs Retention rate per video"></canvas></div>
+  </div>
+  <div class="cc">
+    <div class="ct">Viewer Conversion Funnel</div>
+    <div class="cd">Impression → View → Subscriber pipeline efficiency</div>
+    <div id="funnel-rows" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="section-lbl">Engagement & Topic Deep Dive</div>
+<div class="row r-2" style="margin-bottom:14px">
+  <div class="cc">
+    <div class="ct">Avg Engagement Rate by Topic</div>
+    <div class="cd">(Likes + Comments + Shares) / Views</div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--o)"></div>Engagement Rate</div>
+    </div>
+    <div style="position:relative;height:230px"><canvas id="engChart" role="img" aria-label="Bar chart of engagement rate by topic"></canvas></div>
+  </div>
+  <div class="cc">
+    <div class="ct">Avg Views by Topic × Format</div>
+    <div class="cd">Shorts vs Long average views per topic</div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--t)"></div>Short</div>
+      <div class="li"><div class="ld" style="background:var(--p)"></div>Long</div>
+    </div>
+    <div style="position:relative;height:230px"><canvas id="topicViewsChart" role="img" aria-label="Grouped bar chart of avg views by topic and format"></canvas></div>
+  </div>
+</div>
+
+<div class="section-lbl">Top Performing Videos</div>
+<div class="cc" style="margin-bottom:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div>
+      <div class="ct">Top 15 Videos by Net Subscribers</div>
+      <div class="cd">Ranked by subscriber gain impact — includes engagement and watch time</div>
+    </div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--t)"></div>Short</div>
+      <div class="li"><div class="ld" style="background:var(--p)"></div>Long</div>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table class="dtbl">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Title</th>
+          <th>Type</th>
+          <th>Topic</th>
+          <th class="r">Views</th>
+          <th class="r">Net Subs</th>
+          <th class="r">CTR</th>
+          <th class="r">Retention</th>
+          <th class="r">Eng. Rate</th>
+          <th class="r">Watch Hrs</th>
+        </tr>
+      </thead>
+      <tbody id="top-table"></tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+
+<footer class="ftr">
+  <span>Insight BI · YouTube Content Performance Dashboard · Dataset: 300 synthetic videos</span>
+  <span>Built from BRD spec · Covers May 2025 – Apr 2026</span>
+</footer>
+
+<script>
+const RAW=
+[{"id":"VID_0204","ti":"Advanced Power Query Transformations #204","dt":"2025-10-17","vt":"Long","tp":"Dashboard Design","dur":1687,"imp":132841,"ctr":4.53,"vw":6017,"avd":606,"wt":1012.86,"sg":43,"sl":6,"lk":307,"cm":39,"sh":82},{"id":"VID_0267","ti":"Power BI Row Level Security Explained #267","dt":"2025-09-24","vt":"Long","tp":"Dashboard Design","dur":850,"imp":194972,"ctr":4.48,"vw":8734,"avd":431,"wt":1045.65,"sg":187,"sl":24,"lk":571,"cm":33,"sh":51},{"id":"VID_0153","ti":"Why Your Power BI is Slow #153","dt":"2025-09-12","vt":"Short","tp":"Interview Prep","dur":18,"imp":138706,"ctr":6.8,"vw":9432,"avd":14,"wt":36.68,"sg":37,"sl":7,"lk":286,"cm":87,"sh":95},{"id":"VID_0010","ti":"DAX RANKX Made Simple #10","dt":"2025-08-07","vt":"Short","tp":"Interview Prep","dur":22,"imp":169893,"ctr":7.84,"vw":13319,"avd":13,"wt":48.1,"sg":21,"sl":4,"lk":628,"cm":128,"sh":241},{"id":"VID_0234","ti":"DAX Measures Best Practices Guide #234","dt":"2026-02-21","vt":"Long","tp":"DAX","dur":323,"imp":19948,"ctr":3.57,"vw":712,"avd":162,"wt":32.04,"sg":5,"sl":0,"lk":47,"cm":2,"sh":13},{"id":"VID_0227","ti":"Build a Financial Dashboard in Power BI #227","dt":"2025-06-20","vt":"Long","tp":"SQL","dur":1706,"imp":42724,"ctr":8.48,"vw":3622,"avd":654,"wt":658.0,"sg":55,"sl":9,"lk":155,"cm":35,"sh":35},{"id":"VID_0197","ti":"Building DAX Calculated Tables #197","dt":"2026-02-01","vt":"Long","tp":"Power Query","dur":850,"imp":7781,"ctr":2.13,"vw":165,"avd":477,"wt":21.86,"sg":1,"sl":0,"lk":11,"cm":0,"sh":3},{"id":"VID_0110","ti":"Why Your Power BI is Slow #110","dt":"2025-07-09","vt":"Short","tp":"Dashboard Design","dur":20,"imp":231579,"ctr":6.31,"vw":14612,"avd":16,"wt":64.94,"sg":90,"sl":28,"lk":328,"cm":135,"sh":198},{"id":"VID_0006","ti":"One DAX Function to Rule Them All #6","dt":"2026-03-12","vt":"Short","tp":"DAX","dur":30,"imp":171530,"ctr":8.95,"vw":15351,"avd":22,"wt":93.81,"sg":68,"sl":11,"lk":605,"cm":125,"sh":89},{"id":"VID_0176","ti":"SQL Window Functions Fast #176","dt":"2025-11-17","vt":"Short","tp":"DAX","dur":32,"imp":121820,"ctr":7.13,"vw":8685,"avd":25,"wt":60.31,"sg":36,"sl":4,"lk":353,"cm":62,"sh":93},{"id":"VID_0238","ti":"End-to-End BI Project Power BI Tutorial #238","dt":"2026-03-29","vt":"Long","tp":"Power Query","dur":1470,"imp":196508,"ctr":8.51,"vw":16722,"avd":624,"wt":2898.48,"sg":134,"sl":20,"lk":380,"cm":87,"sh":303},{"id":"VID_0058","ti":"SQL Window Functions Fast #58","dt":"2025-11-16","vt":"Short","tp":"DAX","dur":24,"imp":189297,"ctr":4.43,"vw":8385,"avd":12,"wt":27.95,"sg":11,"sl":3,"lk":472,"cm":69,"sh":70},{"id":"VID_0219","ti":"Power BI Row Level Security Explained #219","dt":"2025-08-13","vt":"Long","tp":"Power Query","dur":1684,"imp":11805,"ctr":3.26,"vw":384,"avd":889,"wt":94.83,"sg":5,"sl":0,"lk":27,"cm":1,"sh":4},{"id":"VID_0046","ti":"DAX CALCULATE Trick in 60 Seconds #46","dt":"2025-10-25","vt":"Short","tp":"DAX","dur":56,"imp":159647,"ctr":5.0,"vw":7982,"avd":22,"wt":48.78,"sg":17,"sl":2,"lk":386,"cm":23,"sh":153},{"id":"VID_0183","ti":"DAX Studio Performance Tuning Guide #183","dt":"2026-02-08","vt":"Long","tp":"DAX","dur":975,"imp":11052,"ctr":3.0,"vw":331,"avd":627,"wt":57.65,"sg":10,"sl":1,"lk":21,"cm":1,"sh":5},{"id":"VID_0222","ti":"Power BI Deployment Pipeline Guide #222","dt":"2025-06-17","vt":"Long","tp":"DAX","dur":399,"imp":24268,"ctr":4.62,"vw":1121,"avd":159,"wt":49.51,"sg":12,"sl":0,"lk":86,"cm":4,"sh":17},{"id":"VID_0290","ti":"Complete DAX Tutorial for Beginners 2024 #290","dt":"2025-07-01","vt":"Long","tp":"DAX","dur":1387,"imp":184282,"ctr":7.67,"vw":14134,"avd":647,"wt":2540.19,"sg":248,"sl":29,"lk":392,"cm":71,"sh":195},{"id":"VID_0212","ti":"Building DAX Calculated Tables #212","dt":"2025-07-12","vt":"Long","tp":"Dashboard Design","dur":654,"imp":95716,"ctr":4.7,"vw":4498,"avd":357,"wt":446.05,"sg":107,"sl":18,"lk":323,"cm":43,"sh":55},{"id":"VID_0149","ti":"This DAX Mistake Costs You Hours #149","dt":"2026-03-15","vt":"Short","tp":"Tips","dur":53,"imp":201948,"ctr":8.66,"vw":17488,"avd":31,"wt":150.59,"sg":30,"sl":11,"lk":1125,"cm":76,"sh":175},{"id":"VID_0166","ti":"Conditional Formatting Trick #166","dt":"2026-01-16","vt":"Short","tp":"Interview Prep","dur":44,"imp":225887,"ctr":6.08,"vw":13733,"avd":34,"wt":129.7,"sg":79,"sl":25,"lk":935,"cm":118,"sh":225},{"id":"VID_0079","ti":"CALCULATE Context Transition Fast #79","dt":"2026-01-08","vt":"Short","tp":"Performance Optimization","dur":27,"imp":283340,"ctr":4.53,"vw":12835,"avd":16,"wt":57.04,"sg":41,"sl":11,"lk":1021,"cm":55,"sh":252},{"id":"VID_0114","ti":"One DAX Function to Rule Them All #114","dt":"2025-07-19","vt":"Short","tp":"Power Query","dur":20,"imp":202216,"ctr":8.07,"vw":16318,"avd":16,"wt":72.52,"sg":33,"sl":9,"lk":824,"cm":35,"sh":157},{"id":"VID_0250","ti":"DAX Context Transition Explained #250","dt":"2025-05-05","vt":"Long","tp":"DAX","dur":1281,"imp":120405,"ctr":4.69,"vw":5646,"avd":588,"wt":922.18,"sg":92,"sl":19,"lk":197,"cm":56,"sh":74},{"id":"VID_0251","ti":"Advanced Dashboard Design Principles #251","dt":"2026-04-10","vt":"Long","tp":"Power Query","dur":1760,"imp":147055,"ctr":5.72,"vw":8411,"avd":1107,"wt":2586.38,"sg":159,"sl":20,"lk":258,"cm":38,"sh":69},{"id":"VID_0105","ti":"One DAX Function to Rule Them All #105","dt":"2026-03-21","vt":"Short","tp":"Power Query","dur":41,"imp":40934,"ctr":8.83,"vw":3614,"avd":21,"wt":21.08,"sg":12,"sl":3,"lk":252,"cm":33,"sh":22},{"id":"VID_0043","ti":"SQL GROUP BY Mistake Everyone Makes #43","dt":"2025-12-25","vt":"Short","tp":"DAX","dur":46,"imp":284616,"ctr":4.15,"vw":11811,"avd":28,"wt":91.86,"sg":43,"sl":14,"lk":749,"cm":103,"sh":221},{"id":"VID_0282","ti":"Power BI Row Level Security Explained #282","dt":"2026-02-01","vt":"Long","tp":"Power Query","dur":1634,"imp":155605,"ctr":7.83,"vw":12183,"avd":548,"wt":1854.52,"sg":172,"sl":36,"lk":682,"cm":88,"sh":185},{"id":"VID_0296","ti":"Power Query Advanced Techniques Full Guide #296","dt":"2025-06-09","vt":"Long","tp":"Power Query","dur":1139,"imp":163691,"ctr":6.48,"vw":10607,"avd":447,"wt":1317.04,"sg":156,"sl":22,"lk":361,"cm":22,"sh":67},{"id":"VID_0158","ti":"Measure vs Calculated Column Fast #158","dt":"2026-04-03","vt":"Short","tp":"SQL","dur":21,"imp":20479,"ctr":2.2,"vw":450,"avd":10,"wt":1.25,"sg":0,"sl":0,"lk":34,"cm":2,"sh":8},{"id":"VID_0239","ti":"SQL Stored Procedures for Data Analysts #239","dt":"2025-11-05","vt":"Long","tp":"Power Query","dur":936,"imp":139733,"ctr":4.04,"vw":5645,"avd":382,"wt":599.0,"sg":49,"sl":10,"lk":363,"cm":22,"sh":59},{"id":"VID_0018","ti":"CALCULATE Context Transition Fast #18","dt":"2025-11-02","vt":"Short","tp":"SQL","dur":19,"imp":81332,"ctr":4.25,"vw":3456,"avd":15,"wt":14.4,"sg":19,"sl":7,"lk":261,"cm":30,"sh":25},{"id":"VID_0165","ti":"One DAX Function to Rule Them All #165","dt":"2025-06-18","vt":"Short","tp":"Power Query","dur":44,"imp":293465,"ctr":8.62,"vw":25296,"avd":26,"wt":182.69,"sg":91,"sl":26,"lk":1933,"cm":124,"sh":210},{"id":"VID_0034","ti":"Power BI Bookmark Hack #34","dt":"2025-07-04","vt":"Short","tp":"SQL","dur":34,"imp":18382,"ctr":2.65,"vw":487,"avd":22,"wt":2.98,"sg":1,"sl":0,"lk":29,"cm":2,"sh":7},{"id":"VID_0025","ti":"Fix Slow Power BI Reports Fast #25","dt":"2025-05-17","vt":"Short","tp":"DAX","dur":50,"imp":140430,"ctr":7.59,"vw":10658,"avd":26,"wt":76.97,"sg":33,"sl":11,"lk":536,"cm":42,"sh":198},{"id":"VID_0216","ti":"Advanced DAX Patterns You Must Know #216","dt":"2025-06-20","vt":"Long","tp":"SQL","dur":478,"imp":82113,"ctr":5.05,"vw":4146,"avd":331,"wt":381.2,"sg":96,"sl":11,"lk":259,"cm":29,"sh":31},{"id":"VID_0120","ti":"SQL GROUP BY Mistake Everyone Makes #120","dt":"2026-03-19","vt":"Short","tp":"Tips","dur":37,"imp":57921,"ctr":5.98,"vw":3463,"avd":25,"wt":24.05,"sg":7,"sl":2,"lk":147,"cm":7,"sh":65},{"id":"VID_0008","ti":"Top 3 DAX Mistakes #8","dt":"2025-05-15","vt":"Short","tp":"SQL","dur":50,"imp":24155,"ctr":2.86,"vw":690,"avd":38,"wt":7.28,"sg":2,"sl":0,"lk":55,"cm":4,"sh":4},{"id":"VID_0091","ti":"DAX CALCULATE Trick in 60 Seconds #91","dt":"2025-11-12","vt":"Short","tp":"Dashboard Design","dur":30,"imp":1230841,"ctr":9.86,"vw":121360,"avd":14,"wt":471.96,"sg":365,"sl":94,"lk":7856,"cm":705,"sh":2023},{"id":"VID_0047","ti":"Conditional Formatting Trick #47","dt":"2025-09-20","vt":"Short","tp":"DAX","dur":38,"imp":90048,"ctr":7.89,"vw":7104,"avd":20,"wt":39.47,"sg":29,"sl":3,"lk":153,"cm":31,"sh":107},{"id":"VID_0074","ti":"Measure vs Calculated Column Fast #74","dt":"2026-04-07","vt":"Short","tp":"Power Query","dur":31,"imp":2167165,"ctr":12.55,"vw":271979,"avd":25,"wt":1888.74,"sg":871,"sl":263,"lk":14147,"cm":2620,"sh":3917},{"id":"VID_0094","ti":"Power Query M Code Hack #94","dt":"2026-03-29","vt":"Short","tp":"SQL","dur":53,"imp":295054,"ctr":7.03,"vw":20742,"avd":24,"wt":138.28,"sg":63,"sl":8,"lk":1229,"cm":187,"sh":275},{"id":"VID_0077","ti":"CALCULATE Context Transition Fast #77","dt":"2026-01-11","vt":"Short","tp":"DAX","dur":26,"imp":17535,"ctr":3.24,"vw":568,"avd":13,"wt":2.05,"sg":1,"sl":0,"lk":19,"cm":4,"sh":6},{"id":"VID_0287","ti":"SQL Interview Questions and Answers #287","dt":"2026-03-28","vt":"Long","tp":"Power Query","dur":1385,"imp":59525,"ctr":4.69,"vw":2791,"avd":620,"wt":480.67,"sg":29,"sl":7,"lk":205,"cm":27,"sh":19},{"id":"VID_0061","ti":"DAX DIVIDE Function Explained Fast #61","dt":"2026-04-15","vt":"Short","tp":"Interview Prep","dur":19,"imp":168702,"ctr":7.94,"vw":13394,"avd":16,"wt":59.53,"sg":67,"sl":25,"lk":609,"cm":85,"sh":197},{"id":"VID_0078","ti":"Power BI Bookmark Hack #78","dt":"2025-10-21","vt":"Short","tp":"Tips","dur":44,"imp":2792598,"ctr":9.11,"vw":254405,"avd":31,"wt":2190.71,"sg":1375,"sl":544,"lk":9654,"cm":2466,"sh":3906},{"id":"VID_0064","ti":"SQL Window Functions Fast #64","dt":"2025-12-29","vt":"Short","tp":"Tips","dur":58,"imp":51092,"ctr":7.82,"vw":3995,"avd":28,"wt":31.07,"sg":9,"sl":2,"lk":299,"cm":13,"sh":55},{"id":"VID_0235","ti":"DAX Context Transition Explained #235","dt":"2026-03-27","vt":"Long","tp":"Tips","dur":986,"imp":157325,"ctr":4.32,"vw":6796,"avd":659,"wt":1244.05,"sg":222,"sl":38,"lk":338,"cm":41,"sh":39},{"id":"VID_0230","ti":"DAX Studio Performance Tuning Guide #230","dt":"2025-05-02","vt":"Long","tp":"Tips","dur":1092,"imp":130326,"ctr":5.83,"vw":7598,"avd":676,"wt":1426.74,"sg":79,"sl":11,"lk":602,"cm":19,"sh":104},{"id":"VID_0112","ti":"Power BI Filter Context Explained #112","dt":"2025-06-03","vt":"Short","tp":"DAX","dur":54,"imp":178317,"ctr":5.94,"vw":10592,"avd":45,"wt":132.4,"sg":35,"sl":9,"lk":713,"cm":76,"sh":63},{"id":"VID_0232","ti":"Build a Financial Dashboard in Power BI #232","dt":"2025-10-14","vt":"Long","tp":"DAX","dur":934,"imp":60731,"ctr":6.68,"vw":4056,"avd":480,"wt":540.8,"sg":69,"sl":13,"lk":239,"cm":28,"sh":39},{"id":"VID_0181","ti":"Advanced Dashboard Design Principles #181","dt":"2026-02-17","vt":"Long","tp":"Power Query","dur":879,"imp":190058,"ctr":5.8,"vw":11023,"avd":396,"wt":1212.53,"sg":121,"sl":27,"lk":528,"cm":92,"sh":174},{"id":"VID_0145","ti":"One DAX Function to Rule Them All #145","dt":"2026-01-06","vt":"Short","tp":"DAX","dur":16,"imp":294998,"ctr":6.29,"vw":18555,"avd":9,"wt":46.39,"sg":34,"sl":6,"lk":427,"cm":110,"sh":338},{"id":"VID_0240","ti":"Advanced Dashboard Design Principles #240","dt":"2025-09-04","vt":"Long","tp":"Interview Prep","dur":700,"imp":84258,"ctr":4.75,"vw":4002,"avd":419,"wt":465.79,"sg":26,"sl":4,"lk":232,"cm":30,"sh":20},{"id":"VID_0076","ti":"This SQL Query Will Impress Your Boss #76","dt":"2026-03-01","vt":"Short","tp":"Interview Prep","dur":25,"imp":5948,"ctr":2.09,"vw":124,"avd":10,"wt":0.34,"sg":0,"sl":0,"lk":3,"cm":0,"sh":1},{"id":"VID_0298","ti":"Build a Real-Time Dashboard in Power BI #298","dt":"2025-06-20","vt":"Long","tp":"Tips","dur":657,"imp":955424,"ctr":11.81,"vw":112835,"avd":357,"wt":11189.47,"sg":1657,"sl":121,"lk":8019,"cm":1029,"sh":580},{"id":"VID_0279","ti":"Complete DAX Tutorial for Beginners 2024 #279","dt":"2026-01-27","vt":"Long","tp":"Tips","dur":341,"imp":144281,"ctr":8.56,"vw":12350,"avd":146,"wt":500.86,"sg":180,"sl":9,"lk":434,"cm":104,"sh":118},{"id":"VID_0098","ti":"DAX RANKX Made Simple #98","dt":"2025-12-21","vt":"Short","tp":"Power Query","dur":21,"imp":222707,"ctr":4.57,"vw":10177,"avd":12,"wt":33.92,"sg":31,"sl":10,"lk":719,"cm":99,"sh":175},{"id":"VID_0093","ti":"Power Query M Code Hack #93","dt":"2025-08-31","vt":"Short","tp":"Interview Prep","dur":46,"imp":68530,"ctr":8.5,"vw":5825,"avd":28,"wt":45.31,"sg":20,"sl":2,"lk":212,"cm":41,"sh":77},{"id":"VID_0193","ti":"Top SQL Mistakes Beginners Make and How to Fix #193","dt":"2025-12-23","vt":"Long","tp":"Power Query","dur":1598,"imp":148608,"ctr":5.14,"vw":7638,"avd":1045,"wt":2217.14,"sg":237,"sl":32,"lk":464,"cm":55,"sh":48},{"id":"VID_0026","ti":"Power BI Shortcut You Must Know #26","dt":"2025-05-01","vt":"Short","tp":"Tips","dur":42,"imp":514871,"ctr":10.33,"vw":53186,"avd":20,"wt":295.48,"sg":147,"sl":26,"lk":3429,"cm":341,"sh":607},{"id":"VID_0233","ti":"Power BI Performance Optimization Guide #233","dt":"2026-01-27","vt":"Long","tp":"DAX","dur":788,"imp":133897,"ctr":4.58,"vw":6132,"avd":549,"wt":935.13,"sg":146,"sl":16,"lk":395,"cm":48,"sh":41},{"id":"VID_0060","ti":"DAX RANKX Made Simple #60","dt":"2026-01-25","vt":"Short","tp":"DAX","dur":25,"imp":69355,"ctr":4.78,"vw":3315,"avd":16,"wt":14.73,"sg":9,"sl":2,"lk":124,"cm":12,"sh":51},{"id":"VID_0007","ti":"Stop Using SUMX Like This #7","dt":"2025-06-20","vt":"Short","tp":"SQL","dur":35,"imp":1384926,"ctr":14.39,"vw":199290,"avd":24,"wt":1328.6,"sg":447,"sl":111,"lk":14564,"cm":1423,"sh":1423},{"id":"VID_0186","ti":"Building DAX Calculated Tables #186","dt":"2025-11-08","vt":"Long","tp":"Performance Optimization","dur":1562,"imp":24123,"ctr":4.03,"vw":972,"avd":1032,"wt":278.64,"sg":16,"sl":0,"lk":61,"cm":6,"sh":9},{"id":"VID_0174","ti":"Measure vs Calculated Column Fast #174","dt":"2025-11-09","vt":"Short","tp":"Dashboard Design","dur":43,"imp":55520,"ctr":5.22,"vw":2898,"avd":18,"wt":14.49,"sg":5,"sl":0,"lk":95,"cm":25,"sh":16},{"id":"VID_0031","ti":"Top SQL Interview Trick #31","dt":"2025-08-06","vt":"Short","tp":"Performance Optimization","dur":19,"imp":214101,"ctr":7.21,"vw":15436,"avd":13,"wt":55.74,"sg":64,"sl":22,"lk":615,"cm":34,"sh":280},{"id":"VID_0023","ti":"Conditional Formatting Trick #23","dt":"2025-08-16","vt":"Short","tp":"DAX","dur":19,"imp":82418,"ctr":4.37,"vw":3601,"avd":10,"wt":10.0,"sg":9,"sl":1,"lk":147,"cm":9,"sh":31},{"id":"VID_0257","ti":"From Zero to Power BI in 60 Minutes #257","dt":"2026-02-27","vt":"Long","tp":"DAX","dur":960,"imp":134522,"ctr":7.96,"vw":10707,"avd":537,"wt":1597.13,"sg":215,"sl":18,"lk":836,"cm":80,"sh":202},{"id":"VID_0057","ti":"DAX Variables Save Your Sanity #57","dt":"2025-12-27","vt":"Short","tp":"SQL","dur":45,"imp":126659,"ctr":8.83,"vw":11183,"avd":26,"wt":80.77,"sg":49,"sl":11,"lk":775,"cm":58,"sh":68},{"id":"VID_0187","ti":"Data Modeling Best Practices in Power BI #187","dt":"2025-09-28","vt":"Long","tp":"SQL","dur":1680,"imp":48053,"ctr":8.59,"vw":4127,"avd":1040,"wt":1192.24,"sg":40,"sl":3,"lk":212,"cm":35,"sh":37},{"id":"VID_0109","ti":"Power Query Merge Trick #109","dt":"2025-05-27","vt":"Short","tp":"Dashboard Design","dur":43,"imp":1652064,"ctr":12.14,"vw":200560,"avd":28,"wt":1559.91,"sg":658,"sl":127,"lk":9449,"cm":492,"sh":3504},{"id":"VID_0127","ti":"Fix Slow Power BI Reports Fast #127","dt":"2025-05-16","vt":"Short","tp":"Power Query","dur":17,"imp":21888,"ctr":2.8,"vw":612,"avd":14,"wt":2.38,"sg":2,"sl":0,"lk":35,"cm":2,"sh":10},{"id":"VID_0231","ti":"Power BI Incremental Refresh Tutorial #231","dt":"2025-06-25","vt":"Long","tp":"Performance Optimization","dur":381,"imp":152804,"ctr":5.43,"vw":8297,"avd":242,"wt":557.74,"sg":214,"sl":28,"lk":366,"cm":59,"sh":108},{"id":"VID_0194","ti":"Power BI Performance Optimization Guide #194","dt":"2025-09-14","vt":"Long","tp":"Interview Prep","dur":804,"imp":90247,"ctr":4.77,"vw":4304,"avd":319,"wt":381.38,"sg":67,"sl":7,"lk":113,"cm":8,"sh":41},{"id":"VID_0130","ti":"Power Query Tip No One Tells You #130","dt":"2026-02-28","vt":"Short","tp":"Interview Prep","dur":53,"imp":262735,"ctr":5.76,"vw":15133,"avd":22,"wt":92.48,"sg":39,"sl":14,"lk":860,"cm":82,"sh":220},{"id":"VID_0283","ti":"Top 10 Power BI Interview Questions Answered #283","dt":"2026-01-19","vt":"Long","tp":"Performance Optimization","dur":1318,"imp":1077795,"ctr":9.43,"vw":101636,"avd":431,"wt":12168.09,"sg":1107,"sl":275,"lk":7008,"cm":482,"sh":1595},{"id":"VID_0083","ti":"Top SQL Interview Trick #83","dt":"2025-07-24","vt":"Short","tp":"Tips","dur":32,"imp":282627,"ctr":8.84,"vw":24984,"avd":21,"wt":145.74,"sg":106,"sl":21,"lk":672,"cm":242,"sh":177},{"id":"VID_0085","ti":"SQL JOIN in 30 Seconds #85","dt":"2026-03-13","vt":"Short","tp":"Tips","dur":55,"imp":152590,"ctr":6.36,"vw":9704,"avd":41,"wt":110.52,"sg":52,"sl":13,"lk":726,"cm":36,"sh":57},{"id":"VID_0067","ti":"Build KPI Card in 60 Seconds #67","dt":"2025-06-13","vt":"Short","tp":"Dashboard Design","dur":38,"imp":25493,"ctr":2.88,"vw":734,"avd":16,"wt":3.26,"sg":0,"sl":0,"lk":55,"cm":4,"sh":11},{"id":"VID_0289","ti":"DAX Iterator Functions Deep Dive #289","dt":"2025-05-02","vt":"Long","tp":"DAX","dur":480,"imp":186064,"ctr":6.15,"vw":11442,"avd":253,"wt":804.12,"sg":293,"sl":37,"lk":254,"cm":41,"sh":121},{"id":"VID_0164","ti":"Power Query M Code Hack #164","dt":"2025-05-21","vt":"Short","tp":"Power Query","dur":31,"imp":29699,"ctr":2.53,"vw":751,"avd":17,"wt":3.55,"sg":1,"sl":0,"lk":15,"cm":5,"sh":11},{"id":"VID_0155","ti":"Build KPI Card in 60 Seconds #155","dt":"2025-09-21","vt":"Short","tp":"Interview Prep","dur":28,"imp":196220,"ctr":6.4,"vw":12558,"avd":19,"wt":66.28,"sg":64,"sl":21,"lk":457,"cm":37,"sh":190},{"id":"VID_0020","ti":"Dashboard Color Trick in 1 Minute #20","dt":"2025-11-08","vt":"Short","tp":"SQL","dur":60,"imp":185560,"ctr":5.09,"vw":9445,"avd":25,"wt":65.59,"sg":21,"sl":5,"lk":612,"cm":23,"sh":129},{"id":"VID_0125","ti":"Power BI Filter Context Explained #125","dt":"2026-03-09","vt":"Short","tp":"Tips","dur":37,"imp":156419,"ctr":7.66,"vw":11981,"avd":17,"wt":56.58,"sg":36,"sl":11,"lk":478,"cm":28,"sh":158},{"id":"VID_0080","ti":"Power BI Bookmark Hack #80","dt":"2025-09-11","vt":"Short","tp":"Dashboard Design","dur":15,"imp":55713,"ctr":8.55,"vw":4763,"avd":11,"wt":14.55,"sg":17,"sl":6,"lk":177,"cm":39,"sh":67},{"id":"VID_0115","ti":"This DAX Mistake Costs You Hours #115","dt":"2026-04-02","vt":"Short","tp":"DAX","dur":46,"imp":111235,"ctr":4.39,"vw":4883,"avd":21,"wt":28.48,"sg":11,"sl":2,"lk":314,"cm":30,"sh":72},{"id":"VID_0119","ti":"SQL JOIN in 30 Seconds #119","dt":"2025-07-22","vt":"Short","tp":"Dashboard Design","dur":38,"imp":95367,"ctr":5.43,"vw":5178,"avd":20,"wt":28.77,"sg":9,"sl":3,"lk":149,"cm":28,"sh":99},{"id":"VID_0073","ti":"SQL Window Functions Fast #73","dt":"2025-06-26","vt":"Short","tp":"DAX","dur":17,"imp":204060,"ctr":8.35,"vw":17039,"avd":13,"wt":61.53,"sg":33,"sl":12,"lk":356,"cm":53,"sh":307},{"id":"VID_0016","ti":"VLOOKUP vs XLOOKUP Fast #16","dt":"2025-05-18","vt":"Short","tp":"Dashboard Design","dur":51,"imp":277974,"ctr":8.04,"vw":22349,"avd":26,"wt":161.41,"sg":29,"sl":8,"lk":922,"cm":118,"sh":401},{"id":"VID_0011","ti":"SQL JOIN in 30 Seconds #11","dt":"2025-11-19","vt":"Short","tp":"SQL","dur":26,"imp":186471,"ctr":8.21,"vw":15309,"avd":18,"wt":76.55,"sg":59,"sl":8,"lk":1006,"cm":96,"sh":255},{"id":"VID_0195","ti":"Data Modeling Best Practices in Power BI #195","dt":"2026-02-26","vt":"Long","tp":"DAX","dur":509,"imp":132978,"ctr":6.24,"vw":8297,"avd":294,"wt":677.59,"sg":146,"sl":10,"lk":210,"cm":53,"sh":115},{"id":"VID_0102","ti":"SQL GROUP BY Mistake Everyone Makes #102","dt":"2025-05-18","vt":"Short","tp":"DAX","dur":47,"imp":88138,"ctr":5.42,"vw":4777,"avd":39,"wt":51.75,"sg":22,"sl":5,"lk":183,"cm":17,"sh":94},{"id":"VID_0069","ti":"Measure vs Calculated Column Fast #69","dt":"2025-07-10","vt":"Short","tp":"SQL","dur":24,"imp":183019,"ctr":6.54,"vw":11969,"avd":13,"wt":43.22,"sg":29,"sl":7,"lk":578,"cm":67,"sh":85},{"id":"VID_0225","ti":"Interview Prep Complete Power BI Questions #225","dt":"2026-02-21","vt":"Long","tp":"Dashboard Design","dur":1164,"imp":38567,"ctr":5.14,"vw":1982,"avd":394,"wt":216.92,"sg":26,"sl":1,"lk":76,"cm":17,"sh":13},{"id":"VID_0038","ti":"Power Query Merge Trick #38","dt":"2025-11-30","vt":"Short","tp":"DAX","dur":42,"imp":273557,"ctr":4.25,"vw":11626,"avd":23,"wt":74.28,"sg":47,"sl":6,"lk":325,"cm":66,"sh":150},{"id":"VID_0017","ti":"One DAX Function to Rule Them All #17","dt":"2025-08-02","vt":"Short","tp":"DAX","dur":56,"imp":207892,"ctr":8.0,"vw":16631,"avd":25,"wt":115.49,"sg":25,"sl":3,"lk":780,"cm":89,"sh":152},{"id":"VID_0180","ti":"Dashboard Color Trick in 1 Minute #180","dt":"2025-11-27","vt":"Short","tp":"DAX","dur":15,"imp":91507,"ctr":7.73,"vw":7073,"avd":12,"wt":23.58,"sg":27,"sl":4,"lk":397,"cm":25,"sh":132},{"id":"VID_0148","ti":"Power BI Filter Context Explained #148","dt":"2025-11-15","vt":"Short","tp":"Dashboard Design","dur":36,"imp":105637,"ctr":5.0,"vw":5281,"avd":30,"wt":44.01,"sg":19,"sl":2,"lk":117,"cm":40,"sh":90},{"id":"VID_0275","ti":"Power Query Error Handling Guide #275","dt":"2025-11-17","vt":"Long","tp":"Interview Prep","dur":1133,"imp":15252,"ctr":3.64,"vw":555,"avd":602,"wt":92.81,"sg":12,"sl":0,"lk":34,"cm":2,"sh":9},{"id":"VID_0068","ti":"VLOOKUP vs XLOOKUP Fast #68","dt":"2025-06-12","vt":"Short","tp":"Dashboard Design","dur":55,"imp":1164286,"ctr":10.18,"vw":118524,"avd":22,"wt":724.31,"sg":251,"sl":32,"lk":9426,"cm":1102,"sh":1413},{"id":"VID_0229","ti":"Power Query M Language Full Tutorial #229","dt":"2026-04-25","vt":"Long","tp":"DAX","dur":1623,"imp":149731,"ctr":5.93,"vw":8879,"avd":732,"wt":1805.4,"sg":120,"sl":20,"lk":459,"cm":87,"sh":175},{"id":"VID_0070","ti":"This DAX Mistake Costs You Hours #70","dt":"2026-03-18","vt":"Short","tp":"Interview Prep","dur":47,"imp":66600,"ctr":5.38,"vw":3583,"avd":31,"wt":30.85,"sg":9,"sl":3,"lk":129,"cm":7,"sh":56},{"id":"VID_0032","ti":"Conditional Formatting Trick #32","dt":"2025-08-04","vt":"Short","tp":"DAX","dur":31,"imp":19239,"ctr":2.69,"vw":517,"avd":24,"wt":3.45,"sg":1,"sl":0,"lk":26,"cm":2,"sh":7},{"id":"VID_0184","ti":"DAX Measures Best Practices Guide #184","dt":"2026-03-19","vt":"Long","tp":"Interview Prep","dur":644,"imp":64371,"ctr":4.7,"vw":3025,"avd":443,"wt":372.24,"sg":36,"sl":8,"lk":240,"cm":29,"sh":38},{"id":"VID_0266","ti":"Top 10 Power BI Interview Questions Answered #266","dt":"2025-10-25","vt":"Long","tp":"Tips","dur":1301,"imp":43890,"ctr":7.21,"vw":3164,"avd":786,"wt":690.81,"sg":33,"sl":7,"lk":133,"cm":17,"sh":28},{"id":"VID_0226","ti":"Power BI Row Level Security Explained #226","dt":"2026-04-19","vt":"Long","tp":"Dashboard Design","dur":572,"imp":37933,"ctr":6.65,"vw":2522,"avd":173,"wt":121.2,"sg":26,"sl":2,"lk":103,"cm":9,"sh":40},{"id":"VID_0141","ti":"Top SQL Interview Trick #141","dt":"2025-08-22","vt":"Short","tp":"Tips","dur":56,"imp":1384194,"ctr":13.37,"vw":185066,"avd":35,"wt":1799.25,"sg":660,"sl":71,"lk":13572,"cm":1177,"sh":2707},{"id":"VID_0019","ti":"Power Query Tip No One Tells You #19","dt":"2026-02-25","vt":"Short","tp":"Tips","dur":40,"imp":228691,"ctr":4.01,"vw":9170,"avd":28,"wt":71.32,"sg":23,"sl":7,"lk":433,"cm":49,"sh":177},{"id":"VID_0182","ti":"Build a Supply Chain Dashboard in Power BI #182","dt":"2025-08-20","vt":"Long","tp":"Power Query","dur":716,"imp":31984,"ctr":6.81,"vw":2178,"avd":327,"wt":197.84,"sg":39,"sl":2,"lk":115,"cm":14,"sh":34},{"id":"VID_0097","ti":"CALCULATE Context Transition Fast #97","dt":"2026-01-07","vt":"Short","tp":"SQL","dur":22,"imp":251740,"ctr":8.34,"vw":20995,"avd":8,"wt":46.66,"sg":59,"sl":16,"lk":862,"cm":139,"sh":171},{"id":"VID_0133","ti":"VLOOKUP vs XLOOKUP Fast #133","dt":"2025-10-17","vt":"Short","tp":"Dashboard Design","dur":35,"imp":89479,"ctr":4.13,"vw":3695,"avd":19,"wt":19.5,"sg":10,"sl":2,"lk":198,"cm":15,"sh":32},{"id":"VID_0263","ti":"DAX ALL and ALLEXCEPT Explained #263","dt":"2025-07-16","vt":"Long","tp":"Power Query","dur":490,"imp":146546,"ctr":7.52,"vw":11020,"avd":257,"wt":786.71,"sg":275,"sl":22,"lk":808,"cm":35,"sh":71},{"id":"VID_0087","ti":"SQL GROUP BY Mistake Everyone Makes #87","dt":"2025-09-18","vt":"Short","tp":"Tips","dur":59,"imp":111014,"ctr":8.43,"vw":9358,"avd":43,"wt":111.78,"sg":17,"sl":4,"lk":416,"cm":89,"sh":51},{"id":"VID_0249","ti":"Build a Financial Dashboard in Power BI #249","dt":"2025-10-04","vt":"Long","tp":"DAX","dur":1173,"imp":69060,"ctr":5.37,"vw":3708,"avd":579,"wt":596.37,"sg":82,"sl":4,"lk":211,"cm":14,"sh":34},{"id":"VID_0246","ti":"Power BI Incremental Refresh Tutorial #246","dt":"2026-02-24","vt":"Long","tp":"DAX","dur":656,"imp":138541,"ctr":6.78,"vw":9393,"avd":323,"wt":842.76,"sg":63,"sl":4,"lk":635,"cm":27,"sh":55},{"id":"VID_0117","ti":"Top 3 DAX Mistakes #117","dt":"2025-12-04","vt":"Short","tp":"Power Query","dur":54,"imp":265367,"ctr":5.17,"vw":13719,"avd":28,"wt":106.7,"sg":27,"sl":9,"lk":660,"cm":119,"sh":144},{"id":"VID_0147","ti":"Why Your Power BI is Slow #147","dt":"2025-09-19","vt":"Short","tp":"DAX","dur":33,"imp":266115,"ctr":7.82,"vw":20810,"avd":21,"wt":121.39,"sg":92,"sl":26,"lk":1179,"cm":63,"sh":134},{"id":"VID_0293","ti":"Advanced Dashboard Design Principles #293","dt":"2025-09-22","vt":"Long","tp":"Power Query","dur":1611,"imp":301894,"ctr":10.56,"vw":31880,"avd":532,"wt":4711.16,"sg":384,"sl":69,"lk":675,"cm":239,"sh":358},{"id":"VID_0198","ti":"Power BI Deployment Pipeline Guide #198","dt":"2025-09-04","vt":"Long","tp":"Dashboard Design","dur":1516,"imp":48042,"ctr":4.68,"vw":2248,"avd":460,"wt":287.24,"sg":32,"sl":3,"lk":128,"cm":18,"sh":22},{"id":"VID_0207","ti":"From Zero to Power BI in 60 Minutes #207","dt":"2025-07-08","vt":"Long","tp":"Dashboard Design","dur":1002,"imp":711522,"ctr":10.1,"vw":71863,"avd":582,"wt":11617.85,"sg":684,"sl":110,"lk":5569,"cm":277,"sh":795},{"id":"VID_0056","ti":"Top SQL Interview Trick #56","dt":"2025-05-02","vt":"Short","tp":"SQL","dur":60,"imp":53863,"ctr":8.87,"vw":4777,"avd":41,"wt":54.4,"sg":12,"sl":4,"lk":278,"cm":38,"sh":31},{"id":"VID_0173","ti":"Top 3 DAX Mistakes #173","dt":"2025-06-05","vt":"Short","tp":"Tips","dur":27,"imp":8697,"ctr":2.06,"vw":179,"avd":20,"wt":0.99,"sg":0,"sl":0,"lk":13,"cm":0,"sh":1},{"id":"VID_0185","ti":"Complete DAX Tutorial for Beginners 2024 #185","dt":"2025-12-23","vt":"Long","tp":"DAX","dur":1668,"imp":128106,"ctr":4.69,"vw":6008,"avd":1145,"wt":1910.88,"sg":79,"sl":15,"lk":123,"cm":36,"sh":63},{"id":"VID_0168","ti":"Power BI Bookmark Hack #168","dt":"2025-10-21","vt":"Short","tp":"SQL","dur":48,"imp":137689,"ctr":7.58,"vw":10436,"avd":34,"wt":98.56,"sg":18,"sl":4,"lk":715,"cm":58,"sh":132},{"id":"VID_0140","ti":"SQL Window Functions Fast #140","dt":"2025-05-08","vt":"Short","tp":"Dashboard Design","dur":25,"imp":110842,"ctr":4.86,"vw":5386,"avd":19,"wt":28.43,"sg":25,"sl":7,"lk":379,"cm":35,"sh":93},{"id":"VID_0254","ti":"Build a Sales Dashboard from Scratch #254","dt":"2025-11-24","vt":"Long","tp":"Performance Optimization","dur":1034,"imp":112191,"ctr":8.74,"vw":9805,"avd":598,"wt":1628.72,"sg":88,"sl":21,"lk":688,"cm":83,"sh":191},{"id":"VID_0039","ti":"Top 3 DAX Mistakes #39","dt":"2026-03-19","vt":"Short","tp":"Dashboard Design","dur":43,"imp":294649,"ctr":6.13,"vw":18061,"avd":34,"wt":170.58,"sg":66,"sl":9,"lk":1294,"cm":101,"sh":293},{"id":"VID_0126","ti":"Measure vs Calculated Column Fast #126","dt":"2026-02-28","vt":"Short","tp":"SQL","dur":58,"imp":280888,"ctr":7.16,"vw":20111,"avd":48,"wt":268.15,"sg":46,"sl":14,"lk":1540,"cm":46,"sh":161},{"id":"VID_0196","ti":"Build a Supply Chain Dashboard in Power BI #196","dt":"2025-09-22","vt":"Long","tp":"DAX","dur":1088,"imp":121659,"ctr":7.9,"vw":9611,"avd":697,"wt":1860.8,"sg":283,"sl":65,"lk":756,"cm":63,"sh":72},{"id":"VID_0284","ti":"DAX Measures Best Practices Guide #284","dt":"2025-08-05","vt":"Long","tp":"Performance Optimization","dur":1274,"imp":152989,"ctr":5.5,"vw":8414,"avd":469,"wt":1096.16,"sg":135,"sl":30,"lk":259,"cm":23,"sh":58},{"id":"VID_0138","ti":"Date Table in 60 Seconds #138","dt":"2025-06-30","vt":"Short","tp":"Tips","dur":23,"imp":125401,"ctr":7.84,"vw":9831,"avd":11,"wt":30.04,"sg":21,"sl":7,"lk":229,"cm":29,"sh":71},{"id":"VID_0113","ti":"Top 3 DAX Mistakes #113","dt":"2025-06-16","vt":"Short","tp":"Power Query","dur":39,"imp":108838,"ctr":5.67,"vw":6171,"avd":33,"wt":56.57,"sg":31,"sl":11,"lk":238,"cm":44,"sh":92},{"id":"VID_0169","ti":"Power Query Merge Trick #169","dt":"2026-01-24","vt":"Short","tp":"SQL","dur":50,"imp":191569,"ctr":7.62,"vw":14597,"avd":32,"wt":129.75,"sg":32,"sl":3,"lk":482,"cm":37,"sh":165},{"id":"VID_0118","ti":"Date Table in 60 Seconds #118","dt":"2026-01-01","vt":"Short","tp":"Tips","dur":44,"imp":230211,"ctr":6.51,"vw":14986,"avd":30,"wt":124.88,"sg":79,"sl":27,"lk":1020,"cm":46,"sh":131},{"id":"VID_0278","ti":"Build a Sales Dashboard from Scratch #278","dt":"2026-01-05","vt":"Long","tp":"DAX","dur":1710,"imp":121335,"ctr":4.25,"vw":5156,"avd":1098,"wt":1572.58,"sg":136,"sl":12,"lk":171,"cm":19,"sh":41},{"id":"VID_0272","ti":"DAX Measures Best Practices Guide #272","dt":"2025-12-19","vt":"Long","tp":"Tips","dur":885,"imp":127712,"ctr":5.32,"vw":6794,"avd":600,"wt":1132.33,"sg":135,"sl":23,"lk":151,"cm":28,"sh":48},{"id":"VID_0156","ti":"Date Table in 60 Seconds #156","dt":"2025-07-19","vt":"Short","tp":"Tips","dur":40,"imp":106795,"ctr":5.45,"vw":5820,"avd":25,"wt":40.42,"sg":28,"sl":3,"lk":439,"cm":42,"sh":94},{"id":"VID_0177","ti":"Fix Slow Power BI Reports Fast #177","dt":"2026-04-17","vt":"Short","tp":"SQL","dur":41,"imp":227373,"ctr":4.92,"vw":11186,"avd":33,"wt":102.54,"sg":43,"sl":15,"lk":425,"cm":85,"sh":191},{"id":"VID_0179","ti":"One DAX Function to Rule Them All #179","dt":"2026-04-14","vt":"Short","tp":"DAX","dur":27,"imp":50734,"ctr":8.37,"vw":4246,"avd":13,"wt":15.33,"sg":13,"sl":3,"lk":255,"cm":15,"sh":34},{"id":"VID_0003","ti":"Dashboard Color Trick in 1 Minute #3","dt":"2025-11-21","vt":"Short","tp":"Power Query","dur":36,"imp":206472,"ctr":4.51,"vw":9311,"avd":26,"wt":67.25,"sg":17,"sl":6,"lk":523,"cm":78,"sh":148},{"id":"VID_0116","ti":"This DAX Mistake Costs You Hours #116","dt":"2025-07-28","vt":"Short","tp":"Dashboard Design","dur":23,"imp":115064,"ctr":4.9,"vw":5638,"avd":18,"wt":28.19,"sg":30,"sl":4,"lk":260,"cm":29,"sh":85},{"id":"VID_0144","ti":"CALCULATE Context Transition Fast #144","dt":"2026-04-03","vt":"Short","tp":"SQL","dur":54,"imp":113728,"ctr":8.07,"vw":9177,"avd":39,"wt":99.42,"sg":41,"sl":6,"lk":271,"cm":91,"sh":110},{"id":"VID_0178","ti":"DAX RANKX Made Simple #178","dt":"2025-11-21","vt":"Short","tp":"Performance Optimization","dur":41,"imp":2722946,"ctr":8.94,"vw":243431,"avd":23,"wt":1555.25,"sg":482,"sl":95,"lk":6023,"cm":1362,"sh":2572},{"id":"VID_0121","ti":"This DAX Mistake Costs You Hours #121","dt":"2025-05-28","vt":"Short","tp":"Tips","dur":36,"imp":50081,"ctr":5.43,"vw":2719,"avd":29,"wt":21.9,"sg":13,"sl":1,"lk":169,"cm":15,"sh":13},{"id":"VID_0211","ti":"Power BI Row Level Security Explained #211","dt":"2026-01-03","vt":"Long","tp":"DAX","dur":539,"imp":19738,"ctr":2.78,"vw":548,"avd":313,"wt":47.65,"sg":4,"sl":0,"lk":17,"cm":3,"sh":8},{"id":"VID_0261","ti":"Build a Supply Chain Dashboard in Power BI #261","dt":"2026-01-19","vt":"Long","tp":"Performance Optimization","dur":1159,"imp":149258,"ctr":8.41,"vw":12552,"avd":526,"wt":1833.99,"sg":181,"sl":12,"lk":612,"cm":111,"sh":185},{"id":"VID_0128","ti":"Power Query Merge Trick #128","dt":"2025-11-06","vt":"Short","tp":"Power Query","dur":36,"imp":222948,"ctr":6.18,"vw":13778,"avd":26,"wt":99.51,"sg":64,"sl":23,"lk":595,"cm":134,"sh":171},{"id":"VID_0075","ti":"Stop Using SUMX Like This #75","dt":"2026-04-01","vt":"Short","tp":"DAX","dur":49,"imp":153087,"ctr":7.16,"vw":10961,"avd":28,"wt":85.25,"sg":50,"sl":16,"lk":504,"cm":30,"sh":159},{"id":"VID_0030","ti":"Power BI Shortcut You Must Know #30","dt":"2025-09-29","vt":"Short","tp":"Power Query","dur":21,"imp":276777,"ctr":5.11,"vw":14143,"avd":15,"wt":58.93,"sg":41,"sl":14,"lk":1022,"cm":53,"sh":210},{"id":"VID_0084","ti":"CALCULATE Context Transition Fast #84","dt":"2025-12-10","vt":"Short","tp":"Performance Optimization","dur":58,"imp":221771,"ctr":4.45,"vw":9868,"avd":35,"wt":95.94,"sg":12,"sl":3,"lk":466,"cm":72,"sh":148},{"id":"VID_0270","ti":"Power BI Row Level Security Explained #270","dt":"2026-04-18","vt":"Long","tp":"SQL","dur":1699,"imp":1447905,"ctr":8.55,"vw":123795,"avd":577,"wt":19841.59,"sg":566,"sl":91,"lk":6576,"cm":1095,"sh":1583},{"id":"VID_0108","ti":"Date Table in 60 Seconds #108","dt":"2025-10-15","vt":"Short","tp":"Tips","dur":44,"imp":265355,"ctr":7.41,"vw":19662,"avd":35,"wt":191.16,"sg":91,"sl":36,"lk":774,"cm":192,"sh":191},{"id":"VID_0224","ti":"Power BI Performance Optimization Guide #224","dt":"2025-09-07","vt":"Long","tp":"SQL","dur":779,"imp":44951,"ctr":4.01,"vw":1802,"avd":477,"wt":238.76,"sg":14,"sl":2,"lk":92,"cm":10,"sh":9},{"id":"VID_0159","ti":"Fix Slow Power BI Reports Fast #159","dt":"2026-04-26","vt":"Short","tp":"DAX","dur":56,"imp":198384,"ctr":5.43,"vw":10772,"avd":23,"wt":68.82,"sg":32,"sl":4,"lk":586,"cm":67,"sh":170},{"id":"VID_0281","ti":"Complete Guide to Power BI Service #281","dt":"2025-08-06","vt":"Long","tp":"Dashboard Design","dur":1066,"imp":179658,"ctr":5.41,"vw":9719,"avd":669,"wt":1806.11,"sg":87,"sl":5,"lk":770,"cm":69,"sh":174},{"id":"VID_0247","ti":"Power BI Incremental Refresh Tutorial #247","dt":"2025-07-13","vt":"Long","tp":"DAX","dur":567,"imp":117580,"ctr":7.43,"vw":8736,"avd":335,"wt":812.93,"sg":68,"sl":11,"lk":655,"cm":22,"sh":174},{"id":"VID_0223","ti":"DAX Context Transition Explained #223","dt":"2026-02-03","vt":"Long","tp":"DAX","dur":918,"imp":44468,"ctr":7.27,"vw":3232,"avd":403,"wt":361.8,"sg":18,"sl":3,"lk":190,"cm":7,"sh":46},{"id":"VID_0066","ti":"DAX Variables Save Your Sanity #66","dt":"2025-05-18","vt":"Short","tp":"SQL","dur":17,"imp":162329,"ctr":5.62,"vw":9122,"avd":12,"wt":30.41,"sg":46,"sl":15,"lk":183,"cm":81,"sh":108},{"id":"VID_0199","ti":"SQL Window Functions Complete Tutorial #199","dt":"2025-12-29","vt":"Long","tp":"Performance Optimization","dur":1633,"imp":98757,"ctr":5.6,"vw":5530,"avd":694,"wt":1066.06,"sg":68,"sl":5,"lk":242,"cm":25,"sh":88},{"id":"VID_0086","ti":"SQL GROUP BY Mistake Everyone Makes #86","dt":"2025-10-20","vt":"Short","tp":"Power Query","dur":59,"imp":91171,"ctr":4.7,"vw":4285,"avd":24,"wt":28.57,"sg":6,"sl":1,"lk":110,"cm":38,"sh":30},{"id":"VID_0214","ti":"Build a Real-Time Dashboard in Power BI #214","dt":"2026-02-22","vt":"Long","tp":"DAX","dur":862,"imp":64094,"ctr":7.9,"vw":5063,"avd":547,"wt":769.29,"sg":127,"sl":25,"lk":268,"cm":14,"sh":33},{"id":"VID_0160","ti":"SQL CTE in 30 Seconds #160","dt":"2026-04-22","vt":"Short","tp":"SQL","dur":26,"imp":1237311,"ctr":14.54,"vw":179905,"avd":10,"wt":499.74,"sg":552,"sl":120,"lk":8945,"cm":1707,"sh":3495},{"id":"VID_0013","ti":"This DAX Mistake Costs You Hours #13","dt":"2026-02-04","vt":"Short","tp":"Tips","dur":49,"imp":2493478,"ctr":14.63,"vw":364795,"avd":24,"wt":2431.97,"sg":641,"sl":231,"lk":16557,"cm":1347,"sh":4774},{"id":"VID_0036","ti":"Fix Slow Power BI Reports Fast #36","dt":"2025-10-28","vt":"Short","tp":"Interview Prep","dur":25,"imp":205735,"ctr":4.47,"vw":9196,"avd":13,"wt":33.21,"sg":28,"sl":4,"lk":293,"cm":20,"sh":79},{"id":"VID_0029","ti":"DAX CALCULATE Trick in 60 Seconds #29","dt":"2025-06-28","vt":"Short","tp":"Tips","dur":26,"imp":10877,"ctr":3.47,"vw":377,"avd":15,"wt":1.57,"sg":1,"sl":0,"lk":22,"cm":2,"sh":3},{"id":"VID_0143","ti":"This DAX Mistake Costs You Hours #143","dt":"2025-08-18","vt":"Short","tp":"Performance Optimization","dur":37,"imp":224269,"ctr":6.57,"vw":14734,"avd":17,"wt":69.58,"sg":26,"sl":6,"lk":531,"cm":58,"sh":95},{"id":"VID_0285","ti":"Data Modeling Best Practices in Power BI #285","dt":"2025-09-18","vt":"Long","tp":"Interview Prep","dur":1444,"imp":198182,"ctr":8.5,"vw":16845,"avd":524,"wt":2451.88,"sg":115,"sl":10,"lk":1217,"cm":90,"sh":308},{"id":"VID_0255","ti":"SQL Interview Questions and Answers #255","dt":"2026-01-30","vt":"Long","tp":"DAX","dur":1304,"imp":80980,"ctr":7.01,"vw":5676,"avd":411,"wt":648.01,"sg":55,"sl":2,"lk":426,"cm":20,"sh":39},{"id":"VID_0171","ti":"DAX DIVIDE Function Explained Fast #171","dt":"2025-06-15","vt":"Short","tp":"SQL","dur":39,"imp":227916,"ctr":5.88,"vw":13401,"avd":32,"wt":119.12,"sg":30,"sl":10,"lk":363,"cm":133,"sh":146},{"id":"VID_0052","ti":"This SQL Query Will Impress Your Boss #52","dt":"2026-01-20","vt":"Short","tp":"Power Query","dur":31,"imp":174844,"ctr":6.78,"vw":11854,"avd":20,"wt":65.86,"sg":58,"sl":7,"lk":749,"cm":70,"sh":194},{"id":"VID_0096","ti":"SQL CTE in 30 Seconds #96","dt":"2025-12-01","vt":"Short","tp":"DAX","dur":45,"imp":74755,"ctr":4.47,"vw":3341,"avd":21,"wt":19.49,"sg":10,"sl":2,"lk":92,"cm":8,"sh":64},{"id":"VID_0209","ti":"Power BI vs Tableau Which Should You Learn #209","dt":"2025-09-26","vt":"Long","tp":"DAX","dur":1399,"imp":71661,"ctr":6.29,"vw":4507,"avd":687,"wt":860.09,"sg":81,"sl":11,"lk":351,"cm":20,"sh":48},{"id":"VID_0248","ti":"Power BI Performance Optimization Guide #248","dt":"2025-05-08","vt":"Long","tp":"Tips","dur":1208,"imp":106913,"ctr":4.61,"vw":4928,"avd":844,"wt":1155.34,"sg":97,"sl":8,"lk":268,"cm":42,"sh":53},{"id":"VID_0042","ti":"DAX CALCULATE Trick in 60 Seconds #42","dt":"2025-12-17","vt":"Short","tp":"Power Query","dur":51,"imp":1975383,"ctr":10.09,"vw":199316,"avd":32,"wt":1771.7,"sg":890,"sl":343,"lk":8997,"cm":1590,"sh":2629},{"id":"VID_0090","ti":"This DAX Mistake Costs You Hours #90","dt":"2025-06-17","vt":"Short","tp":"Power Query","dur":29,"imp":31486,"ctr":5.39,"vw":1697,"avd":13,"wt":6.13,"sg":6,"sl":1,"lk":115,"cm":4,"sh":30},{"id":"VID_0245","ti":"SQL Optimization Tips for Data Analysts #245","dt":"2025-08-21","vt":"Long","tp":"DAX","dur":485,"imp":178152,"ctr":4.2,"vw":7482,"avd":228,"wt":473.86,"sg":56,"sl":10,"lk":584,"cm":38,"sh":42},{"id":"VID_0137","ti":"Measure vs Calculated Column Fast #137","dt":"2026-01-16","vt":"Short","tp":"Power Query","dur":19,"imp":280958,"ctr":6.63,"vw":18627,"avd":13,"wt":67.26,"sg":88,"sl":10,"lk":1459,"cm":132,"sh":218},{"id":"VID_0027","ti":"DAX RANKX Made Simple #27","dt":"2026-03-27","vt":"Short","tp":"Tips","dur":59,"imp":6180,"ctr":3.67,"vw":226,"avd":41,"wt":2.57,"sg":0,"sl":0,"lk":5,"cm":1,"sh":4},{"id":"VID_0294","ti":"Power BI Row Level Security Explained #294","dt":"2026-01-24","vt":"Long","tp":"SQL","dur":817,"imp":9733,"ctr":3.39,"vw":329,"avd":567,"wt":51.82,"sg":2,"sl":0,"lk":8,"cm":2,"sh":4},{"id":"VID_0142","ti":"Power Query M Code Hack #142","dt":"2026-01-31","vt":"Short","tp":"SQL","dur":58,"imp":68258,"ctr":7.44,"vw":5078,"avd":28,"wt":39.5,"sg":11,"sl":2,"lk":163,"cm":34,"sh":49},{"id":"VID_0201","ti":"Build a Financial Dashboard in Power BI #201","dt":"2025-08-23","vt":"Long","tp":"SQL","dur":1789,"imp":134938,"ctr":7.99,"vw":10781,"avd":1245,"wt":3728.43,"sg":95,"sl":20,"lk":729,"cm":79,"sh":76},{"id":"VID_0001","ti":"VLOOKUP vs XLOOKUP Fast #1","dt":"2025-07-21","vt":"Short","tp":"Interview Prep","dur":16,"imp":147026,"ctr":4.7,"vw":6910,"avd":7,"wt":13.44,"sg":18,"sl":6,"lk":174,"cm":37,"sh":37},{"id":"VID_0269","ti":"Power BI Row Level Security Explained #269","dt":"2025-10-08","vt":"Long","tp":"Performance Optimization","dur":1687,"imp":51531,"ctr":8.75,"vw":4508,"avd":965,"wt":1208.39,"sg":43,"sl":10,"lk":353,"cm":38,"sh":31},{"id":"VID_0273","ti":"Advanced Power Query Transformations #273","dt":"2025-08-14","vt":"Long","tp":"DAX","dur":1122,"imp":82279,"ctr":4.25,"vw":3496,"avd":579,"wt":562.27,"sg":84,"sl":19,"lk":74,"cm":29,"sh":33},{"id":"VID_0101","ti":"Power BI Shortcut You Must Know #101","dt":"2025-10-05","vt":"Short","tp":"DAX","dur":53,"imp":111568,"ctr":4.79,"vw":5344,"avd":40,"wt":59.38,"sg":9,"sl":1,"lk":248,"cm":28,"sh":75},{"id":"VID_0260","ti":"Advanced Power Query Transformations #260","dt":"2025-09-24","vt":"Long","tp":"Tips","dur":481,"imp":17635,"ctr":2.02,"vw":356,"avd":197,"wt":19.48,"sg":2,"sl":0,"lk":12,"cm":1,"sh":1},{"id":"VID_0256","ti":"Power BI Row Level Security Explained #256","dt":"2025-06-05","vt":"Long","tp":"DAX","dur":962,"imp":7641,"ctr":3.55,"vw":271,"avd":557,"wt":41.93,"sg":6,"sl":1,"lk":11,"cm":2,"sh":2},{"id":"VID_0172","ti":"Date Table in 60 Seconds #172","dt":"2025-09-08","vt":"Short","tp":"Tips","dur":29,"imp":41919,"ctr":8.89,"vw":3726,"avd":18,"wt":18.63,"sg":13,"sl":3,"lk":193,"cm":31,"sh":32},{"id":"VID_0099","ti":"DAX DIVIDE Function Explained Fast #99","dt":"2025-12-03","vt":"Short","tp":"DAX","dur":50,"imp":170219,"ctr":4.14,"vw":7047,"avd":28,"wt":54.81,"sg":24,"sl":4,"lk":284,"cm":14,"sh":127},{"id":"VID_0037","ti":"This SQL Query Will Impress Your Boss #37","dt":"2026-02-20","vt":"Short","tp":"SQL","dur":19,"imp":131940,"ctr":7.59,"vw":10014,"avd":13,"wt":36.16,"sg":34,"sl":5,"lk":594,"cm":20,"sh":162},{"id":"VID_0062","ti":"Power Query Tip No One Tells You #62","dt":"2025-08-11","vt":"Short","tp":"DAX","dur":24,"imp":191277,"ctr":6.98,"vw":13351,"avd":18,"wt":66.75,"sg":75,"sl":17,"lk":642,"cm":59,"sh":147},{"id":"VID_0151","ti":"Top SQL Interview Trick #151","dt":"2026-01-16","vt":"Short","tp":"Dashboard Design","dur":16,"imp":149298,"ctr":7.61,"vw":11361,"avd":13,"wt":41.03,"sg":27,"sl":7,"lk":649,"cm":99,"sh":81},{"id":"VID_0237","ti":"Power Query Advanced Techniques Full Guide #237","dt":"2025-08-10","vt":"Long","tp":"DAX","dur":607,"imp":164930,"ctr":8.02,"vw":13227,"avd":364,"wt":1337.4,"sg":314,"sl":42,"lk":519,"cm":70,"sh":209},{"id":"VID_0203","ti":"Advanced Dashboard Design Principles #203","dt":"2025-12-02","vt":"Long","tp":"Interview Prep","dur":1036,"imp":1445330,"ctr":10.83,"vw":156529,"avd":353,"wt":15348.54,"sg":766,"sl":76,"lk":9373,"cm":521,"sh":2221},{"id":"VID_0243","ti":"Top 10 Power BI Interview Questions Answered #243","dt":"2025-07-15","vt":"Long","tp":"DAX","dur":567,"imp":102577,"ctr":8.63,"vw":8852,"avd":270,"wt":663.9,"sg":160,"sl":31,"lk":345,"cm":36,"sh":54},{"id":"VID_0012","ti":"DAX CALCULATE Trick in 60 Seconds #12","dt":"2026-03-10","vt":"Short","tp":"Power Query","dur":53,"imp":88650,"ctr":8.65,"vw":7668,"avd":30,"wt":63.9,"sg":14,"sl":2,"lk":414,"cm":20,"sh":122},{"id":"VID_0297","ti":"Power BI Performance Optimization Guide #297","dt":"2025-05-16","vt":"Long","tp":"SQL","dur":1670,"imp":154140,"ctr":4.38,"vw":6751,"avd":604,"wt":1132.67,"sg":112,"sl":20,"lk":320,"cm":66,"sh":60},{"id":"VID_0268","ti":"Interview Prep Complete Power BI Questions #268","dt":"2025-11-14","vt":"Long","tp":"Performance Optimization","dur":1157,"imp":170133,"ctr":8.41,"vw":14308,"avd":590,"wt":2344.92,"sg":160,"sl":20,"lk":1019,"cm":32,"sh":194},{"id":"VID_0028","ti":"VLOOKUP vs XLOOKUP Fast #28","dt":"2026-03-29","vt":"Short","tp":"DAX","dur":37,"imp":931147,"ctr":10.48,"vw":97584,"avd":31,"wt":840.31,"sg":597,"sl":132,"lk":5585,"cm":315,"sh":1849},{"id":"VID_0220","ti":"Building DAX Calculated Tables #220","dt":"2026-03-23","vt":"Long","tp":"SQL","dur":1055,"imp":105796,"ctr":6.91,"vw":7310,"avd":712,"wt":1445.76,"sg":216,"sl":14,"lk":572,"cm":51,"sh":113},{"id":"VID_0005","ti":"Power Query M Code Hack #5","dt":"2025-07-02","vt":"Short","tp":"Power Query","dur":21,"imp":221277,"ctr":4.81,"vw":10643,"avd":13,"wt":38.43,"sg":21,"sl":3,"lk":810,"cm":76,"sh":150},{"id":"VID_0123","ti":"DAX CALCULATE Trick in 60 Seconds #123","dt":"2026-01-11","vt":"Short","tp":"Dashboard Design","dur":46,"imp":2661642,"ctr":12.03,"vw":320195,"avd":22,"wt":1956.75,"sg":573,"sl":57,"lk":13182,"cm":2102,"sh":2500},{"id":"VID_0033","ti":"DAX DIVIDE Function Explained Fast #33","dt":"2026-03-22","vt":"Short","tp":"DAX","dur":42,"imp":2758431,"ctr":12.81,"vw":353355,"avd":22,"wt":2159.39,"sg":774,"sl":93,"lk":21149,"cm":1640,"sh":3430},{"id":"VID_0205","ti":"Power BI Custom Visuals Tutorial #205","dt":"2026-02-05","vt":"Long","tp":"Interview Prep","dur":1248,"imp":151194,"ctr":4.75,"vw":7181,"avd":386,"wt":769.96,"sg":65,"sl":7,"lk":540,"cm":19,"sh":125},{"id":"VID_0163","ti":"DISTINCTCOUNT vs COUNTROWS Explained #163","dt":"2026-04-25","vt":"Short","tp":"Dashboard Design","dur":26,"imp":242593,"ctr":8.13,"vw":19722,"avd":18,"wt":98.61,"sg":54,"sl":11,"lk":507,"cm":194,"sh":239},{"id":"VID_0210","ti":"Power BI Deployment Pipeline Guide #210","dt":"2025-06-12","vt":"Long","tp":"Power Query","dur":1012,"imp":181837,"ctr":4.86,"vw":8837,"avd":647,"wt":1588.21,"sg":216,"sl":23,"lk":502,"cm":23,"sh":61},{"id":"VID_0286","ti":"Advanced DAX Patterns You Must Know #286","dt":"2026-03-30","vt":"Long","tp":"SQL","dur":902,"imp":143348,"ctr":4.27,"vw":6120,"avd":594,"wt":1009.8,"sg":134,"sl":32,"lk":148,"cm":55,"sh":76},{"id":"VID_0139","ti":"Why Your Power BI is Slow #139","dt":"2025-06-02","vt":"Short","tp":"DAX","dur":60,"imp":14307,"ctr":3.69,"vw":527,"avd":32,"wt":4.68,"sg":0,"sl":0,"lk":19,"cm":3,"sh":7},{"id":"VID_0063","ti":"Conditional Formatting Trick #63","dt":"2025-12-11","vt":"Short","tp":"SQL","dur":46,"imp":50898,"ctr":8.45,"vw":4300,"avd":28,"wt":33.44,"sg":14,"sl":1,"lk":145,"cm":31,"sh":77},{"id":"VID_0136","ti":"Dashboard Color Trick in 1 Minute #136","dt":"2025-12-21","vt":"Short","tp":"DAX","dur":29,"imp":102811,"ctr":5.18,"vw":5325,"avd":18,"wt":26.62,"sg":7,"sl":1,"lk":224,"cm":44,"sh":70},{"id":"VID_0129","ti":"Stop Using SUMX Like This #129","dt":"2025-08-20","vt":"Short","tp":"Power Query","dur":48,"imp":252560,"ctr":4.39,"vw":11087,"avd":38,"wt":117.03,"sg":69,"sl":10,"lk":417,"cm":31,"sh":109},{"id":"VID_0291","ti":"Build a Real-Time Dashboard in Power BI #291","dt":"2025-11-03","vt":"Long","tp":"Power Query","dur":393,"imp":1156146,"ctr":11.37,"vw":131453,"avd":269,"wt":9822.46,"sg":2786,"sl":380,"lk":8045,"cm":403,"sh":2621},{"id":"VID_0009","ti":"Power Query Merge Trick #9","dt":"2025-05-01","vt":"Short","tp":"Dashboard Design","dur":24,"imp":251333,"ctr":6.98,"vw":17543,"avd":15,"wt":73.1,"sg":47,"sl":18,"lk":907,"cm":171,"sh":314},{"id":"VID_0071","ti":"This DAX Mistake Costs You Hours #71","dt":"2026-01-23","vt":"Short","tp":"SQL","dur":57,"imp":264119,"ctr":6.69,"vw":17669,"avd":33,"wt":161.97,"sg":40,"sl":13,"lk":753,"cm":167,"sh":318},{"id":"VID_0265","ti":"Complete Guide to Power BI Service #265","dt":"2026-02-26","vt":"Long","tp":"Power Query","dur":479,"imp":1207321,"ctr":8.2,"vw":99000,"avd":149,"wt":4097.5,"sg":562,"sl":99,"lk":7783,"cm":573,"sh":666},{"id":"VID_0065","ti":"SQL GROUP BY Mistake Everyone Makes #65","dt":"2026-03-09","vt":"Short","tp":"SQL","dur":20,"imp":204749,"ctr":5.61,"vw":11486,"avd":9,"wt":28.71,"sg":36,"sl":7,"lk":707,"cm":49,"sh":220},{"id":"VID_0045","ti":"SQL CTE in 30 Seconds #45","dt":"2025-05-24","vt":"Short","tp":"Power Query","dur":39,"imp":251021,"ctr":5.26,"vw":13203,"avd":17,"wt":62.35,"sg":27,"sl":8,"lk":305,"cm":126,"sh":110},{"id":"VID_0280","ti":"DAX Measures Best Practices Guide #280","dt":"2026-01-09","vt":"Long","tp":"Tips","dur":1167,"imp":140323,"ctr":5.26,"vw":7380,"avd":588,"wt":1205.4,"sg":82,"sl":12,"lk":423,"cm":49,"sh":37},{"id":"VID_0157","ti":"DAX RANKX Made Simple #157","dt":"2025-12-31","vt":"Short","tp":"Power Query","dur":49,"imp":27812,"ctr":2.54,"vw":706,"avd":22,"wt":4.31,"sg":1,"sl":0,"lk":24,"cm":5,"sh":9},{"id":"VID_0041","ti":"SQL GROUP BY Mistake Everyone Makes #41","dt":"2026-01-22","vt":"Short","tp":"DAX","dur":60,"imp":243699,"ctr":5.65,"vw":13768,"avd":38,"wt":145.33,"sg":39,"sl":6,"lk":622,"cm":127,"sh":189},{"id":"VID_0124","ti":"Why Your Power BI is Slow #124","dt":"2025-08-03","vt":"Short","tp":"DAX","dur":38,"imp":2782045,"ctr":11.55,"vw":321326,"avd":31,"wt":2766.97,"sg":1395,"sl":302,"lk":15490,"cm":2276,"sh":6335},{"id":"VID_0276","ti":"DAX CALCULATE Deep Dive Tutorial #276","dt":"2025-09-28","vt":"Long","tp":"DAX","dur":359,"imp":35106,"ctr":5.25,"vw":1843,"avd":223,"wt":114.16,"sg":13,"sl":1,"lk":58,"cm":9,"sh":22},{"id":"VID_0217","ti":"DAX Studio Performance Tuning Guide #217","dt":"2025-11-13","vt":"Long","tp":"Tips","dur":723,"imp":111964,"ctr":6.66,"vw":7456,"avd":491,"wt":1016.92,"sg":84,"sl":20,"lk":280,"cm":49,"sh":143},{"id":"VID_0154","ti":"Measure vs Calculated Column Fast #154","dt":"2026-02-20","vt":"Short","tp":"Dashboard Design","dur":58,"imp":168601,"ctr":7.05,"vw":11886,"avd":29,"wt":95.75,"sg":46,"sl":8,"lk":450,"cm":113,"sh":234},{"id":"VID_0024","ti":"Conditional Formatting Trick #24","dt":"2025-06-11","vt":"Short","tp":"Interview Prep","dur":49,"imp":26429,"ctr":3.06,"vw":808,"avd":40,"wt":8.98,"sg":4,"sl":0,"lk":48,"cm":7,"sh":5},{"id":"VID_0262","ti":"Power Query Advanced Techniques Full Guide #262","dt":"2025-11-25","vt":"Long","tp":"DAX","dur":1224,"imp":12663,"ctr":2.04,"vw":258,"avd":500,"wt":35.83,"sg":5,"sl":0,"lk":7,"cm":1,"sh":4},{"id":"VID_0111","ti":"Power BI Shortcut You Must Know #111","dt":"2025-10-15","vt":"Short","tp":"SQL","dur":45,"imp":266203,"ctr":4.52,"vw":12032,"avd":28,"wt":93.58,"sg":59,"sl":7,"lk":707,"cm":27,"sh":187},{"id":"VID_0082","ti":"This DAX Mistake Costs You Hours #82","dt":"2025-11-19","vt":"Short","tp":"Power Query","dur":52,"imp":77255,"ctr":8.55,"vw":6605,"avd":30,"wt":55.04,"sg":24,"sl":3,"lk":184,"cm":41,"sh":129},{"id":"VID_0208","ti":"Build a Sales Dashboard from Scratch #208","dt":"2025-05-21","vt":"Long","tp":"SQL","dur":1646,"imp":9465,"ctr":2.9,"vw":274,"avd":932,"wt":70.94,"sg":3,"sl":0,"lk":8,"cm":2,"sh":4},{"id":"VID_0213","ti":"Building DAX Calculated Tables #213","dt":"2025-07-22","vt":"Long","tp":"SQL","dur":1450,"imp":127252,"ctr":7.42,"vw":9442,"avd":860,"wt":2255.59,"sg":215,"sl":29,"lk":283,"cm":61,"sh":159},{"id":"VID_0040","ti":"VLOOKUP vs XLOOKUP Fast #40","dt":"2025-09-23","vt":"Short","tp":"SQL","dur":48,"imp":173968,"ctr":6.2,"vw":10786,"avd":28,"wt":83.89,"sg":21,"sl":4,"lk":793,"cm":28,"sh":78},{"id":"VID_0241","ti":"SQL Optimization Tips for Data Analysts #241","dt":"2025-05-14","vt":"Long","tp":"Power Query","dur":1646,"imp":417996,"ctr":8.23,"vw":34401,"avd":736,"wt":7033.09,"sg":412,"sl":99,"lk":2695,"cm":107,"sh":316},{"id":"VID_0292","ti":"Power BI Incremental Refresh Tutorial #292","dt":"2026-03-01","vt":"Long","tp":"DAX","dur":685,"imp":25013,"ctr":5.14,"vw":1285,"avd":272,"wt":97.09,"sg":9,"sl":0,"lk":64,"cm":3,"sh":20},{"id":"VID_0259","ti":"Power BI vs Tableau Which Should You Learn #259","dt":"2025-08-29","vt":"Long","tp":"DAX","dur":366,"imp":180269,"ctr":5.1,"vw":9193,"avd":253,"wt":646.06,"sg":90,"sl":13,"lk":366,"cm":24,"sh":93},{"id":"VID_0200","ti":"Power BI vs Tableau Which Should You Learn #200","dt":"2026-02-19","vt":"Long","tp":"Interview Prep","dur":1479,"imp":118580,"ctr":5.4,"vw":6403,"avd":845,"wt":1502.93,"sg":89,"sl":21,"lk":204,"cm":63,"sh":49},{"id":"VID_0015","ti":"Power BI Shortcut You Must Know #15","dt":"2025-06-17","vt":"Short","tp":"Interview Prep","dur":19,"imp":12501,"ctr":2.13,"vw":266,"avd":7,"wt":0.52,"sg":0,"sl":0,"lk":9,"cm":1,"sh":2},{"id":"VID_0048","ti":"SQL Window Functions Fast #48","dt":"2025-05-13","vt":"Short","tp":"DAX","dur":60,"imp":157323,"ctr":4.51,"vw":7095,"avd":48,"wt":94.6,"sg":21,"sl":6,"lk":484,"cm":59,"sh":95},{"id":"VID_0095","ti":"SQL GROUP BY Mistake Everyone Makes #95","dt":"2025-06-25","vt":"Short","tp":"Tips","dur":43,"imp":16106,"ctr":3.65,"vw":587,"avd":29,"wt":4.73,"sg":1,"sl":0,"lk":26,"cm":4,"sh":6},{"id":"VID_0264","ti":"Advanced Dashboard Design Principles #264","dt":"2025-09-14","vt":"Long","tp":"Dashboard Design","dur":1138,"imp":89537,"ctr":7.3,"vw":6536,"avd":493,"wt":895.07,"sg":55,"sl":3,"lk":354,"cm":56,"sh":47},{"id":"VID_0228","ti":"SQL Stored Procedures for Data Analysts #228","dt":"2026-02-11","vt":"Long","tp":"DAX","dur":1620,"imp":12336,"ctr":3.56,"vw":439,"avd":513,"wt":62.56,"sg":6,"sl":1,"lk":16,"cm":2,"sh":5},{"id":"VID_0274","ti":"SQL for Data Analysts Complete Course #274","dt":"2025-10-16","vt":"Long","tp":"Dashboard Design","dur":1725,"imp":55228,"ctr":5.5,"vw":3037,"avd":970,"wt":818.3,"sg":69,"sl":7,"lk":193,"cm":20,"sh":19},{"id":"VID_0202","ti":"DAX Iterator Functions Deep Dive #202","dt":"2025-11-24","vt":"Long","tp":"DAX","dur":1648,"imp":15353,"ctr":2.15,"vw":330,"avd":1106,"wt":101.38,"sg":6,"sl":0,"lk":16,"cm":3,"sh":5},{"id":"VID_0162","ti":"SQL JOIN in 30 Seconds #162","dt":"2026-01-14","vt":"Short","tp":"DAX","dur":32,"imp":203373,"ctr":4.81,"vw":9782,"avd":26,"wt":70.65,"sg":46,"sl":14,"lk":203,"cm":45,"sh":92},{"id":"VID_0044","ti":"Power BI Bookmark Hack #44","dt":"2025-09-01","vt":"Short","tp":"Dashboard Design","dur":40,"imp":44209,"ctr":4.42,"vw":1954,"avd":29,"wt":15.74,"sg":3,"sl":0,"lk":44,"cm":9,"sh":15},{"id":"VID_0218","ti":"SQL Window Functions Complete Tutorial #218","dt":"2026-03-15","vt":"Long","tp":"Tips","dur":1691,"imp":127897,"ctr":8.59,"vw":10986,"avd":790,"wt":2410.82,"sg":229,"sl":17,"lk":790,"cm":43,"sh":172},{"id":"VID_0146","ti":"CALCULATE Context Transition Fast #146","dt":"2025-07-12","vt":"Short","tp":"SQL","dur":33,"imp":86359,"ctr":6.15,"vw":5311,"avd":21,"wt":30.98,"sg":21,"sl":6,"lk":222,"cm":27,"sh":71},{"id":"VID_0191","ti":"Power BI Incremental Refresh Tutorial #191","dt":"2026-02-14","vt":"Long","tp":"Dashboard Design","dur":724,"imp":40168,"ctr":5.5,"vw":2209,"avd":505,"wt":309.87,"sg":30,"sl":6,"lk":95,"cm":20,"sh":22},{"id":"VID_0221","ti":"DAX Iterator Functions Deep Dive #221","dt":"2025-09-07","vt":"Long","tp":"Power Query","dur":1394,"imp":644284,"ctr":9.97,"vw":64235,"avd":748,"wt":13346.61,"sg":1486,"sl":174,"lk":3512,"cm":419,"sh":788},{"id":"VID_0252","ti":"Interview Prep Complete Power BI Questions #252","dt":"2026-03-10","vt":"Long","tp":"DAX","dur":875,"imp":158787,"ctr":5.79,"vw":9193,"avd":561,"wt":1432.58,"sg":294,"sl":71,"lk":239,"cm":66,"sh":82},{"id":"VID_0004","ti":"Fix Slow Power BI Reports Fast #4","dt":"2025-05-28","vt":"Short","tp":"DAX","dur":39,"imp":25599,"ctr":3.24,"vw":829,"avd":26,"wt":5.99,"sg":3,"sl":0,"lk":18,"cm":3,"sh":7},{"id":"VID_0106","ti":"Why Your Power BI is Slow #106","dt":"2025-11-19","vt":"Short","tp":"Dashboard Design","dur":42,"imp":7577,"ctr":2.79,"vw":211,"avd":25,"wt":1.47,"sg":0,"sl":0,"lk":14,"cm":0,"sh":3},{"id":"VID_0054","ti":"Measure vs Calculated Column Fast #54","dt":"2026-01-20","vt":"Short","tp":"Power Query","dur":50,"imp":267893,"ctr":5.35,"vw":14332,"avd":28,"wt":111.47,"sg":27,"sl":8,"lk":557,"cm":113,"sh":276},{"id":"VID_0134","ti":"DAX DIVIDE Function Explained Fast #134","dt":"2026-01-17","vt":"Short","tp":"Power Query","dur":54,"imp":21095,"ctr":2.4,"vw":506,"avd":25,"wt":3.51,"sg":1,"sl":0,"lk":37,"cm":2,"sh":3},{"id":"VID_0002","ti":"Dashboard Color Trick in 1 Minute #2","dt":"2025-06-28","vt":"Short","tp":"DAX","dur":53,"imp":28462,"ctr":3.3,"vw":939,"avd":38,"wt":9.91,"sg":3,"sl":0,"lk":34,"cm":8,"sh":15},{"id":"VID_0132","ti":"One DAX Function to Rule Them All #132","dt":"2025-11-19","vt":"Short","tp":"Power Query","dur":56,"imp":23587,"ctr":2.06,"vw":485,"avd":26,"wt":3.5,"sg":1,"sl":0,"lk":20,"cm":3,"sh":6},{"id":"VID_0104","ti":"Power Query Merge Trick #104","dt":"2025-10-01","vt":"Short","tp":"Tips","dur":50,"imp":16605,"ctr":2.14,"vw":355,"avd":21,"wt":2.07,"sg":0,"sl":0,"lk":8,"cm":1,"sh":4},{"id":"VID_0050","ti":"Top 3 DAX Mistakes #50","dt":"2025-07-31","vt":"Short","tp":"SQL","dur":24,"imp":171600,"ctr":7.08,"vw":12149,"avd":17,"wt":57.37,"sg":57,"sl":13,"lk":844,"cm":81,"sh":119},{"id":"VID_0081","ti":"Power BI Bookmark Hack #81","dt":"2026-02-27","vt":"Short","tp":"Dashboard Design","dur":27,"imp":29758,"ctr":3.44,"vw":1023,"avd":20,"wt":5.68,"sg":4,"sl":0,"lk":26,"cm":7,"sh":5},{"id":"VID_0206","ti":"Build a Financial Dashboard in Power BI #206","dt":"2025-06-11","vt":"Long","tp":"Power Query","dur":938,"imp":18824,"ctr":2.7,"vw":508,"avd":330,"wt":46.57,"sg":4,"sl":0,"lk":19,"cm":2,"sh":8},{"id":"VID_0035","ti":"SQL CTE in 30 Seconds #35","dt":"2025-07-19","vt":"Short","tp":"SQL","dur":34,"imp":30212,"ctr":5.52,"vw":1667,"avd":19,"wt":8.8,"sg":4,"sl":1,"lk":98,"cm":9,"sh":19},{"id":"VID_0092","ti":"Conditional Formatting Trick #92","dt":"2025-10-10","vt":"Short","tp":"SQL","dur":43,"imp":52735,"ctr":7.64,"vw":4028,"avd":33,"wt":36.92,"sg":11,"sl":3,"lk":88,"cm":40,"sh":71},{"id":"VID_0053","ti":"Power Query Merge Trick #53","dt":"2025-09-07","vt":"Short","tp":"SQL","dur":60,"imp":39040,"ctr":4.47,"vw":1745,"avd":31,"wt":15.03,"sg":3,"sl":0,"lk":104,"cm":8,"sh":23},{"id":"VID_0242","ti":"Executive Dashboard Design Tips #242","dt":"2025-05-21","vt":"Long","tp":"SQL","dur":1364,"imp":140182,"ctr":8.87,"vw":12434,"avd":495,"wt":1709.67,"sg":149,"sl":22,"lk":724,"cm":64,"sh":172},{"id":"VID_0014","ti":"Power BI Bookmark Hack #14","dt":"2025-12-11","vt":"Short","tp":"Power Query","dur":60,"imp":225779,"ctr":6.19,"vw":13975,"avd":40,"wt":155.28,"sg":43,"sl":7,"lk":333,"cm":30,"sh":185},{"id":"VID_0089","ti":"Dashboard Color Trick in 1 Minute #89","dt":"2025-07-16","vt":"Short","tp":"DAX","dur":44,"imp":41197,"ctr":4.25,"vw":1750,"avd":27,"wt":13.12,"sg":3,"sl":0,"lk":94,"cm":4,"sh":28},{"id":"VID_0167","ti":"Why Your Power BI is Slow #167","dt":"2025-06-30","vt":"Short","tp":"SQL","dur":20,"imp":219679,"ctr":4.39,"vw":9643,"avd":17,"wt":45.54,"sg":21,"sl":7,"lk":715,"cm":34,"sh":125},{"id":"VID_0295","ti":"DAX ALL and ALLEXCEPT Explained #295","dt":"2025-07-14","vt":"Long","tp":"SQL","dur":514,"imp":6857,"ctr":2.57,"vw":176,"avd":354,"wt":17.31,"sg":1,"sl":0,"lk":5,"cm":0,"sh":2},{"id":"VID_0135","ti":"Measure vs Calculated Column Fast #135","dt":"2026-03-01","vt":"Short","tp":"Interview Prep","dur":35,"imp":64046,"ctr":6.75,"vw":4323,"avd":23,"wt":27.62,"sg":20,"sl":7,"lk":271,"cm":40,"sh":62},{"id":"VID_0288","ti":"Data Modeling Best Practices in Power BI #288","dt":"2026-02-26","vt":"Long","tp":"SQL","dur":465,"imp":102159,"ctr":7.17,"vw":7324,"avd":140,"wt":284.82,"sg":61,"sl":5,"lk":486,"cm":48,"sh":54},{"id":"VID_0244","ti":"Build an HR Analytics Dashboard Step by Step #244","dt":"2025-08-08","vt":"Long","tp":"DAX","dur":1497,"imp":8386,"ctr":2.9,"vw":243,"avd":770,"wt":51.98,"sg":3,"sl":0,"lk":18,"cm":0,"sh":2},{"id":"VID_0055","ti":"Top SQL Interview Trick #55","dt":"2025-07-06","vt":"Short","tp":"Interview Prep","dur":28,"imp":28743,"ctr":3.18,"vw":914,"avd":23,"wt":5.84,"sg":3,"sl":0,"lk":23,"cm":3,"sh":7},{"id":"VID_0051","ti":"Power Query M Code Hack #51","dt":"2025-07-18","vt":"Short","tp":"Power Query","dur":20,"imp":157854,"ctr":7.75,"vw":12233,"avd":17,"wt":57.77,"sg":58,"sl":12,"lk":265,"cm":107,"sh":94},{"id":"VID_0175","ti":"Top 3 DAX Mistakes #175","dt":"2025-07-22","vt":"Short","tp":"Tips","dur":29,"imp":197197,"ctr":6.89,"vw":13586,"avd":23,"wt":86.8,"sg":65,"sl":12,"lk":517,"cm":42,"sh":202},{"id":"VID_0190","ti":"DAX Studio Performance Tuning Guide #190","dt":"2026-03-23","vt":"Long","tp":"DAX","dur":770,"imp":144649,"ctr":5.36,"vw":7753,"avd":269,"wt":579.32,"sg":101,"sl":10,"lk":407,"cm":56,"sh":59},{"id":"VID_0299","ti":"Top SQL Mistakes Beginners Make and How to Fix #299","dt":"2026-03-18","vt":"Long","tp":"Power Query","dur":649,"imp":183002,"ctr":5.34,"vw":9772,"avd":241,"wt":654.18,"sg":90,"sl":10,"lk":262,"cm":50,"sh":115},{"id":"VID_0188","ti":"Power Query M Language Full Tutorial #188","dt":"2025-09-21","vt":"Long","tp":"SQL","dur":1131,"imp":673656,"ctr":8.8,"vw":59281,"avd":762,"wt":12547.81,"sg":1753,"sl":316,"lk":4238,"cm":478,"sh":379},{"id":"VID_0170","ti":"Stop Using SUMX Like This #170","dt":"2025-09-19","vt":"Short","tp":"Tips","dur":18,"imp":2480010,"ctr":8.22,"vw":203856,"avd":13,"wt":736.15,"sg":453,"sl":63,"lk":11923,"cm":1597,"sh":3966},{"id":"VID_0059","ti":"SQL Window Functions Fast #59","dt":"2025-08-08","vt":"Short","tp":"Power Query","dur":43,"imp":254830,"ctr":5.53,"vw":14092,"avd":36,"wt":140.92,"sg":27,"sl":10,"lk":365,"cm":114,"sh":202},{"id":"VID_0049","ti":"Stop Using SUMX Like This #49","dt":"2026-03-15","vt":"Short","tp":"Interview Prep","dur":42,"imp":295269,"ctr":7.24,"vw":21377,"avd":16,"wt":95.01,"sg":57,"sl":19,"lk":562,"cm":207,"sh":310},{"id":"VID_0236","ti":"Build an HR Analytics Dashboard Step by Step #236","dt":"2025-10-27","vt":"Long","tp":"DAX","dur":1053,"imp":170447,"ctr":7.37,"vw":12561,"avd":374,"wt":1304.95,"sg":85,"sl":12,"lk":284,"cm":111,"sh":108},{"id":"VID_0253","ti":"SQL for Data Analysts Complete Course #253","dt":"2026-03-06","vt":"Long","tp":"Interview Prep","dur":414,"imp":170914,"ctr":8.23,"vw":14066,"avd":223,"wt":871.31,"sg":183,"sl":39,"lk":994,"cm":47,"sh":195},{"id":"VID_0022","ti":"SQL GROUP BY Mistake Everyone Makes #22","dt":"2025-10-22","vt":"Short","tp":"Dashboard Design","dur":17,"imp":195868,"ctr":8.67,"vw":16981,"avd":9,"wt":42.45,"sg":54,"sl":10,"lk":610,"cm":51,"sh":249},{"id":"VID_0161","ti":"SQL Window Functions Fast #161","dt":"2026-03-23","vt":"Short","tp":"DAX","dur":17,"imp":86256,"ctr":8.64,"vw":7452,"avd":11,"wt":22.77,"sg":17,"sl":6,"lk":391,"cm":44,"sh":142},{"id":"VID_0277","ti":"Power Query M Language Full Tutorial #277","dt":"2026-04-09","vt":"Long","tp":"Dashboard Design","dur":553,"imp":117639,"ctr":6.44,"vw":7575,"avd":279,"wt":587.06,"sg":65,"sl":14,"lk":418,"cm":36,"sh":56},{"id":"VID_0192","ti":"End-to-End BI Project Power BI Tutorial #192","dt":"2026-02-21","vt":"Long","tp":"Interview Prep","dur":1711,"imp":110664,"ctr":4.27,"vw":4725,"avd":960,"wt":1260.0,"sg":51,"sl":3,"lk":266,"cm":32,"sh":65},{"id":"VID_0258","ti":"Data Modeling Best Practices in Power BI #258","dt":"2026-02-20","vt":"Long","tp":"Dashboard Design","dur":1663,"imp":119191,"ctr":5.53,"vw":6591,"avd":799,"wt":1462.84,"sg":47,"sl":9,"lk":507,"cm":63,"sh":71},{"id":"VID_0150","ti":"Fix Slow Power BI Reports Fast #150","dt":"2026-04-01","vt":"Short","tp":"Interview Prep","dur":46,"imp":278980,"ctr":8.08,"vw":22541,"avd":29,"wt":181.58,"sg":56,"sl":7,"lk":1014,"cm":100,"sh":416},{"id":"VID_0131","ti":"One DAX Function to Rule Them All #131","dt":"2025-05-23","vt":"Short","tp":"Interview Prep","dur":19,"imp":220479,"ctr":6.57,"vw":14485,"avd":9,"wt":36.21,"sg":52,"sl":7,"lk":817,"cm":119,"sh":79},{"id":"VID_0152","ti":"SQL JOIN in 30 Seconds #152","dt":"2025-10-27","vt":"Short","tp":"Tips","dur":51,"imp":11251,"ctr":2.04,"vw":229,"avd":30,"wt":1.91,"sg":0,"sl":0,"lk":7,"cm":1,"sh":3},{"id":"VID_0100","ti":"DISTINCTCOUNT vs COUNTROWS Explained #100","dt":"2026-02-23","vt":"Short","tp":"DAX","dur":19,"imp":46073,"ctr":4.46,"vw":2054,"avd":15,"wt":8.56,"sg":5,"sl":1,"lk":83,"cm":10,"sh":32},{"id":"VID_0088","ti":"CALCULATE Context Transition Fast #88","dt":"2025-06-13","vt":"Short","tp":"Performance Optimization","dur":43,"imp":16884,"ctr":2.2,"vw":371,"avd":28,"wt":2.89,"sg":1,"sl":0,"lk":15,"cm":1,"sh":2},{"id":"VID_0215","ti":"Power Query Advanced Techniques Full Guide #215","dt":"2025-10-19","vt":"Long","tp":"SQL","dur":1051,"imp":135701,"ctr":6.73,"vw":9132,"avd":532,"wt":1349.51,"sg":65,"sl":14,"lk":594,"cm":40,"sh":182},{"id":"VID_0122","ti":"DAX RANKX Made Simple #122","dt":"2025-10-21","vt":"Short","tp":"Tips","dur":28,"imp":2713634,"ctr":10.96,"vw":297414,"avd":23,"wt":1900.14,"sg":910,"sl":173,"lk":6800,"cm":1593,"sh":5028},{"id":"VID_0300","ti":"From Zero to Power BI in 60 Minutes #300","dt":"2025-12-04","vt":"Long","tp":"Interview Prep","dur":1279,"imp":49637,"ctr":4.66,"vw":2313,"avd":443,"wt":284.63,"sg":39,"sl":8,"lk":60,"cm":21,"sh":28},{"id":"VID_0021","ti":"Why Your Power BI is Slow #21","dt":"2025-08-01","vt":"Short","tp":"DAX","dur":48,"imp":72001,"ctr":8.26,"vw":5947,"avd":21,"wt":34.69,"sg":14,"sl":4,"lk":202,"cm":17,"sh":109},{"id":"VID_0189","ti":"Complete DAX Tutorial for Beginners 2024 #189","dt":"2025-11-18","vt":"Long","tp":"DAX","dur":1274,"imp":64927,"ctr":4.41,"vw":2863,"avd":814,"wt":647.36,"sg":50,"sl":10,"lk":154,"cm":25,"sh":18},{"id":"VID_0072","ti":"Date Table in 60 Seconds #72","dt":"2025-06-25","vt":"Short","tp":"DAX","dur":39,"imp":18460,"ctr":2.09,"vw":385,"avd":30,"wt":3.21,"sg":1,"sl":0,"lk":16,"cm":2,"sh":6},{"id":"VID_0107","ti":"SQL CTE in 30 Seconds #107","dt":"2026-02-21","vt":"Short","tp":"Power Query","dur":37,"imp":107432,"ctr":5.18,"vw":5564,"avd":18,"wt":27.82,"sg":9,"sl":1,"lk":162,"cm":44,"sh":34},{"id":"VID_0271","ti":"Power Query Error Handling Guide #271","dt":"2025-12-01","vt":"Long","tp":"Dashboard Design","dur":1734,"imp":129994,"ctr":4.56,"vw":5927,"avd":673,"wt":1108.02,"sg":36,"sl":6,"lk":388,"cm":56,"sh":111},{"id":"VID_0103","ti":"Date Table in 60 Seconds #103","dt":"2026-01-25","vt":"Short","tp":"Tips","dur":34,"imp":1075604,"ctr":13.35,"vw":143593,"avd":22,"wt":877.51,"sg":368,"sl":37,"lk":9307,"cm":489,"sh":1536}]
+;
+
+// State
+let activeType='All',activeTopic='All';
+let filtered=[...RAW];
+
+// Charts registry
+let charts={};
+
+function fmt(n){
+  if(n>=1e6)return (n/1e6).toFixed(1)+'M';
+  if(n>=1e3)return (n/1e3).toFixed(1)+'K';
+  return n.toFixed?n.toFixed(0):n;
+}
+function fmtPct(n){return n.toFixed(1)+'%'}
+function avg(arr,fn){const v=arr.map(fn).filter(x=>isFinite(x));return v.length?v.reduce((a,b)=>a+b,0)/v.length:0}
+function sum(arr,fn){return arr.map(fn).filter(x=>isFinite(x)).reduce((a,b)=>a+b,0)}
+
+// Computed metrics
+function retention(d){return d.dur>0?d.avd/d.dur*100:0}
+function netSubs(d){return d.sg-d.sl}
+function engRate(d){return d.vw>0?(d.lk+d.cm+d.sh)/d.vw*100:0}
+function scrRate(d){return d.vw>0?d.sg/d.vw*100:0}
+
+function setType(t){
+  document.querySelectorAll('.tb').forEach(b=>{
+    b.classList.toggle('on',b.textContent===t)
+  });
+  activeType=t;
+  applyFilters();
+}
+function setTopic(t){activeTopic=t;applyFilters()}
+function resetFilters(){
+  setType('All');
+  document.getElementById('topic-sel').value='All';
+  activeTopic='All';
+}
+function applyFilters(){
+  filtered=RAW.filter(d=>{
+    if(activeType!=='All'&&d.vt!==activeType)return false;
+    if(activeTopic!=='All'&&d.tp!==activeTopic)return false;
+    return true;
+  });
+  renderAll();
+}
+
+const TOPICS=['DAX','SQL','Power Query','Dashboard Design','Interview Prep','Performance Optimization','Tips'];
+const COLORS={t:'#00D4A3',o:'#FF8C42',p:'#8B7FFA',b:'#38BDF8',pk:'#F472B6',g:'#86EFAC'};
+const TOPIC_COLORS=['#00D4A3','#38BDF8','#FF8C42','#F472B6','#86EFAC','#8B7FFA','#FBBF24'];
+
+function renderKPIs(){
+  const d=filtered;
+  const tv=sum(d,r=>r.vw);
+  const twt=sum(d,r=>r.wt);
+  const tns=sum(d,r=>r.sg-r.sl);
+  const actr=avg(d,r=>r.ctr);
+  const aret=avg(d,r=>retention(r));
+  const scr=tv>0?sum(d,r=>r.sg)/tv*100:0;
+
+  document.getElementById('k-views').textContent=fmt(tv);
+  document.getElementById('ks-views').textContent=fmt(sum(d,r=>r.imp))+' impressions';
+  document.getElementById('k-wt').textContent=fmt(twt);
+  document.getElementById('k-ns').textContent=fmt(tns);
+  document.getElementById('ks-ns').textContent=sum(d,r=>r.sg)+' gained, '+sum(d,r=>r.sl)+' lost';
+  document.getElementById('k-ctr').textContent=fmtPct(actr);
+  document.getElementById('k-ret').textContent=fmtPct(aret);
+  document.getElementById('k-scr').textContent=fmtPct(scr);
+  document.getElementById('h-total').textContent=d.length;
+  document.getElementById('fc').textContent=d.length;
+}
+
+function renderCompare(){
+  const sh=filtered.filter(d=>d.vt==='Short');
+  const lo=filtered.filter(d=>d.vt==='Long');
+  function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val}
+  const sets=[
+    ['s-vw','l-vw',d=>avg(d,r=>r.vw),v=>fmt(v)],
+    ['s-ctr','l-ctr',d=>avg(d,r=>r.ctr),v=>fmtPct(v)],
+    ['s-ret','l-ret',d=>avg(d,r=>retention(r)),v=>fmtPct(v)],
+    ['s-scr','l-scr',d=>avg(d,r=>scrRate(r)),v=>fmtPct(v)],
+    ['s-ns','l-ns',d=>avg(d,r=>netSubs(r)),v=>fmt(v)],
+    ['s-eng','l-eng',d=>avg(d,r=>engRate(r)),v=>fmtPct(v)],
+  ];
+  sets.forEach(([si,li,fn,fmt2])=>{
+    set(si,sh.length?fmt2(fn(sh)):'–');
+    set(li,lo.length?fmt2(fn(lo)):'–');
+  });
+}
+
+function renderTrend(){
+  // Group by month
+  const months={};
+  filtered.forEach(d=>{
+    const m=d.dt.slice(0,7);
+    if(!months[m])months[m]={S:0,L:0};
+    months[m][d.vt==='Short'?'S':'L']+=d.vw;
+  });
+  const sortedM=Object.keys(months).sort();
+  const labels=sortedM.map(m=>{const[y,mo]=m.split('-');return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+mo-1]+' '+y.slice(2)});
+  const sData=sortedM.map(m=>months[m].S||0);
+  const lData=sortedM.map(m=>months[m].L||0);
+
+  if(charts.trend){charts.trend.destroy()}
+  charts.trend=new Chart(document.getElementById('trendChart'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Shorts',data:sData,backgroundColor:'rgba(0,212,163,0.7)',borderRadius:3,borderSkipped:false},
+      {label:'Long',data:lData,backgroundColor:'rgba(139,127,250,0.5)',borderRadius:3,borderSkipped:false,
+       borderColor:'rgba(139,127,250,0.8)',borderWidth:1}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)} views`}
+      }},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5E6A88',font:{size:10},maxRotation:45},stacked:false},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5E6A88',font:{size:10},callback:v=>fmt(v)},border:{dash:[3,3]}}
+      }
+    }
+  });
+}
+
+function renderTopic(){
+  const ns=TOPICS.map(tp=>{
+    const d=filtered.filter(r=>r.tp===tp);
+    return {tp,ns:sum(d,r=>r.sg-r.sl),cnt:d.length};
+  }).sort((a,b)=>b.ns-a.ns);
+
+  const h=Math.max(220,ns.length*38+60);
+  document.getElementById('topicChartWrap').style.height=h+'px';
+  document.getElementById('topicChart').style.height=h+'px';
+
+  if(charts.topic){charts.topic.destroy()}
+  charts.topic=new Chart(document.getElementById('topicChart'),{
+    type:'bar',
+    data:{
+      labels:ns.map(d=>d.tp),
+      datasets:[{
+        label:'Net Subscribers',
+        data:ns.map(d=>d.ns),
+        backgroundColor:ns.map((_,i)=>TOPIC_COLORS[i%7]),
+        borderRadius:5,borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`Net Subs: ${fmt(ctx.raw)} (${ns[ctx.dataIndex].cnt} videos)`}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5E6A88',font:{size:10},callback:v=>fmt(v)},border:{dash:[3,3]}},
+        y:{grid:{display:false},ticks:{color:'#DDE4F5',font:{size:11}}}
+      }
+    }
+  });
+}
+
+function renderScatter(){
+  const sh=filtered.filter(d=>d.vt==='Short');
+  const lo=filtered.filter(d=>d.vt==='Long');
+  function pts(arr){return arr.map(d=>({x:d.ctr,y:+retention(d).toFixed(1),r:Math.max(3,Math.min(12,Math.sqrt(d.vw/800))),label:d.ti}))}
+  if(charts.scatter){charts.scatter.destroy()}
+  charts.scatter=new Chart(document.getElementById('scatterChart'),{
+    type:'bubble',
+    data:{datasets:[
+      {label:'Short',data:pts(sh),backgroundColor:'rgba(0,212,163,0.55)',borderColor:'rgba(0,212,163,0.8)',borderWidth:1},
+      {label:'Long',data:pts(lo),backgroundColor:'rgba(139,127,250,0.45)',borderColor:'rgba(139,127,250,0.7)',borderWidth:1}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{const p=ctx.raw;return[ctx.dataset.label+': '+ctx.label,`CTR: ${p.x}% | Retention: ${p.y}%`]}}}
+      },
+      scales:{
+        x:{title:{display:true,text:'Click-Through Rate (%)',color:'#5E6A88',font:{size:10}},
+           grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5E6A88',font:{size:10}},min:0},
+        y:{title:{display:true,text:'Retention Rate (%)',color:'#5E6A88',font:{size:10}},
+           grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5E6A88',font:{size:10}},min:0}
+      }
+    }
+  });
+}
+
+function renderFunnel(){
+  const d=filtered;
+  const imp=sum(d,r=>r.imp);
+  const vw=sum(d,r=>r.vw);
+  const sg=sum(d,r=>r.sg);
+  const ns=sum(d,r=>r.sg-r.sl);
+  const steps=[
+    {lbl:'Impressions',val:imp,color:'#38BDF8',pct:100},
+    {lbl:'Views',val:vw,color:'#00D4A3',pct:imp>0?(vw/imp*100):0},
+    {lbl:'Subs Gained',val:sg,color:'#FF8C42',pct:vw>0?(sg/vw*100):0},
+    {lbl:'Net Subs',val:ns,color:'#86EFAC',pct:sg>0?(ns/sg*100):0},
+  ];
+  const maxW=steps[0].val;
+  const rows=steps.map((s,i)=>{
+    const w=maxW>0?Math.max(8,(s.val/maxW)*100):8;
+    const pctStr=i===0?'100%':fmtPct(s.pct);
+    return `<div class="fn-row">
+      <div class="fn-lbl">${s.lbl}</div>
+      <div class="fn-wrap"><div class="fn-bar" style="width:${w}%;background:${s.color}">
+        <span class="fn-val">${fmt(s.val)}</span>
+      </div></div>
+      <div class="fn-pct">${pctStr}</div>
+    </div>
+    ${i<steps.length-1?'<div class="fn-arrow">↓</div>':''}`;
+  });
+  document.getElementById('funnel-rows').innerHTML=rows.join('');
+  // Add insight
+  const ctrAvg=avg(d,r=>r.ctr);
+  const retAvg=avg(d,r=>retention(r));
+  const bottleneck=ctrAvg<retAvg?'CTR is the bottleneck':'Retention is the bottleneck';
+  document.getElementById('funnel-rows').innerHTML+=`<div style="margin-top:14px;padding:10px 12px;background:rgba(255,140,66,0.08);border-radius:8px;border-left:3px solid var(--o);font-size:11px;color:var(--text)"><strong style="color:var(--o)">Insight:</strong> Avg CTR ${fmtPct(ctrAvg)} vs Retention ${fmtPct(retAvg)} — <em>${bottleneck}</em></div>`;
+}
+
+function renderEngChart(){
+  const topicEng=TOPICS.map(tp=>{
+    const d=filtered.filter(r=>r.tp===tp);
+    return {tp,er:d.length?avg(d,r=>engRate(r)):0};
+  }).sort((a,b)=>b.er-a.er);
+  if(charts.eng){charts.eng.destroy()}
+  charts.eng=new Chart(document.getElementById('engChart'),{
+    type:'bar',
+    data:{
+      labels:topicEng.map(d=>d.tp),
+      datasets:[{
+        label:'Engagement Rate %',
+        data:topicEng.map(d=>+d.er.toFixed(2)),
+        backgroundColor:'rgba(255,140,66,0.7)',
+        borderColor:'rgba(255,140,66,0.9)',
+        borderWidth:1,borderRadius:5,borderSkipped:false
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`Eng Rate: ${ctx.raw.toFixed(2)}%`}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#5E6A88',font:{size:10},maxRotation:30}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5E6A88',font:{size:10},callback:v=>v.toFixed(1)+'%'},border:{dash:[3,3]}}
+      }
+    }
+  });
+}
+
+function renderTopicViews(){
+  const labels=TOPICS;
+  const sh=labels.map(tp=>{const d=filtered.filter(r=>r.tp===tp&&r.vt==='Short');return d.length?Math.round(avg(d,r=>r.vw)):0});
+  const lo=labels.map(tp=>{const d=filtered.filter(r=>r.tp===tp&&r.vt==='Long');return d.length?Math.round(avg(d,r=>r.vw)):0});
+  if(charts.tv){charts.tv.destroy()}
+  charts.tv=new Chart(document.getElementById('topicViewsChart'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Short',data:sh,backgroundColor:'rgba(0,212,163,0.7)',borderRadius:4,borderSkipped:false},
+      {label:'Long',data:lo,backgroundColor:'rgba(139,127,250,0.55)',borderRadius:4,borderSkipped:false}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)} avg views`}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#5E6A88',font:{size:10},maxRotation:30}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5E6A88',font:{size:10},callback:v=>fmt(v)},border:{dash:[3,3]}}
+      }
+    }
+  });
+}
+
+function renderTable(){
+  const sorted=[...filtered].sort((a,b)=>(b.sg-b.sl)-(a.sg-a.sl)).slice(0,15);
+  const maxNS=Math.max(...sorted.map(d=>d.sg-d.sl),1);
+  const rows=sorted.map((d,i)=>{
+    const ns=d.sg-d.sl;
+    const ret=retention(d).toFixed(1);
+    const er=engRate(d).toFixed(2);
+    const barW=Math.round((ns/maxNS)*80);
+    const shortTitle=d.ti.length>45?d.ti.slice(0,45)+'…':d.ti;
+    return `<tr>
+      <td><span class="rank-n${i<3?' top':''}">${i+1}</span></td>
+      <td style="max-width:240px;font-size:11px" title="${d.ti}">${shortTitle}</td>
+      <td><span class="bsh ${d.vt==='Short'?'bsh-s':'bsh-l'}">${d.vt}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${d.tp}</td>
+      <td class="r">${fmt(d.vw)}</td>
+      <td class="r"><span style="color:${ns>0?'var(--t)':'var(--pk)'};font-weight:600">${ns>0?'+':''}${fmt(ns)}</span><span class="num-bar" style="width:${barW}px;background:var(--t)"></span></td>
+      <td class="r">${d.ctr.toFixed(1)}%</td>
+      <td class="r">${ret}%</td>
+      <td class="r">${er}%</td>
+      <td class="r">${fmt(d.wt)}h</td>
+    </tr>`;
+  });
+  document.getElementById('top-table').innerHTML=rows.join('');
+}
+
+function renderAll(){
+  renderKPIs();
+  renderCompare();
+  renderTrend();
+  renderTopic();
+  renderScatter();
+  renderFunnel();
+  renderEngChart();
+  renderTopicViews();
+  renderTable();
+}
+
+Chart.defaults.color='#5E6A88';
+Chart.defaults.font.family="'Barlow',sans-serif";
+Chart.defaults.borderColor='rgba(255,255,255,0.06)';
+
+renderAll();
+</script>
+</body>
+</html>
